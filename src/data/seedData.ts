@@ -57,7 +57,7 @@ export const BOARD_GAMES: BoardGame[] = [
     activeRoomsCount: 0,
     onlinePlayersCount: 0,
     forumThreadsCount: 0,
-    coverImage: '/src/assets/images/game_cheese_thief_1794065328864.jpg',
+    coverImage: '/images/game_cheese_thief_1794065328864.jpg',
     shortSummary:
       'ทุกคนได้บทลับเป็น หนูขี้เซา หรือ จอมโจรชีส กลางคืนหลับตาแล้วตื่นเฉพาะชั่วโมงที่เต๋าทอยได้ (1–6 น.) จอมโจรแอบคว้าชีส หนูขี้เซาแอบส่องถ้วยเต๋า พอสว่างมาโหวตหาตัวโจร — เล่น 4–8 คน จบใน 10 นาที ไม่มีใครตกรอบ!',
     rulesOverview: [
@@ -105,7 +105,7 @@ export const BOARD_GAMES: BoardGame[] = [
     activeRoomsCount: 0,
     onlinePlayersCount: 0,
     forumThreadsCount: 0,
-    coverImage: '/src/assets/images/game_insider_mystery_1794127649826.jpg',
+    coverImage: '/images/game_insider_mystery_1794127649826.jpg',
     shortSummary:
       'บอร์ดเกมทายคำศัพท์ผสมจับคนร้ายระดับตำนาน! ช่วยกันถามคำถาม ใช่/ไม่ใช่ กับ Master เพื่อหาคำลับให้ทันเวลา แต่ระวัง... มี "จอมบงการ (Insider)" ที่แอบรู้คำตอบอยู่แล้วกำลังเนียนชี้นำทุกคนอยู่!',
     rulesOverview: [
@@ -148,7 +148,7 @@ export const BOARD_GAMES: BoardGame[] = [
     activeRoomsCount: 0,
     onlinePlayersCount: 0,
     forumThreadsCount: 0,
-    coverImage: '/src/assets/images/game_undercover_noir_1794146778197.jpg',
+    coverImage: '/images/game_undercover_noir_1794146778197.jpg',
     shortSummary:
       'สุดยอดปาร์ตี้เกมบลัฟคำศัพท์! พลเมืองได้คำลับหลัก, สายลับได้คำคู่เหมือนที่ใกล้เคียงกันมาก, และ Mr. White ไม่รู้คำอะไรเลย ผลัดกันบอกคำใบ้รอบโต๊ะ โหวตจับคนน่าสงสัย และชิงไหวชิงพริบเพื่อเอาชีวิตรอด!',
     rulesOverview: [
@@ -191,7 +191,7 @@ export const BOARD_GAMES: BoardGame[] = [
     activeRoomsCount: 0,
     onlinePlayersCount: 0,
     forumThreadsCount: 0,
-    coverImage: '/src/assets/images/game_avalon_knights_1794065329379.jpg',
+    coverImage: '/images/game_avalon_knights_1794065329379.jpg',
     shortSummary:
       'สงครามจิตวิทยาแห่งคาเมล็อต เมอร์ลินรู้ตัวคนร้ายทั้งหมดแต่ต้องซ่อนตัวไม่ให้มือสังหารจับได้ จัดทีมทำภารกิจให้สำเร็จ 3 ใน 5 รอบเพื่อกอบกู้อาณาจักร',
     rulesOverview: [
@@ -239,7 +239,7 @@ export const BOARD_GAMES: BoardGame[] = [
     activeRoomsCount: 0,
     onlinePlayersCount: 0,
     forumThreadsCount: 0,
-    coverImage: '/src/assets/images/game_werewolf_village_1794065330493.jpg',
+    coverImage: '/images/game_werewolf_village_1794065330493.jpg',
     shortSummary:
       'บอร์ดเกมคืนเดียวจบสุดเร้าใจ ไม่มีการคัดคนออกกลางคัน บทบาทของทุกคนอาจถูกสลับสับเปลี่ยนในตอนกลางคืนโดยที่คุณไม่รู้ตัว!',
     rulesOverview: [
@@ -281,7 +281,7 @@ export const BOARD_GAMES: BoardGame[] = [
     activeRoomsCount: 0,
     onlinePlayersCount: 0,
     forumThreadsCount: 0,
-    coverImage: '/src/assets/images/game_catan_islands_1794065330615.jpg',
+    coverImage: '/images/game_catan_islands_1794065330615.jpg',
     shortSummary:
       'บริหารทรัพยากรไม้ อิฐ ข้าวสาลี แกะ และแร่หิน สร้างถนนและตั้งถิ่นฐานบนเกาะหกเหลี่ยม พร้อมระบบเจรจาแลกเปลี่ยนทรัพยากร',
     rulesOverview: [
