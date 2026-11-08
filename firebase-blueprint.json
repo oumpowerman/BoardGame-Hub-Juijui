@@ -1,0 +1,267 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered player account with display name, friend code, and accepted friend UIDs",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Unique user ID"
+        },
+        "accountName": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Player chosen account display name"
+        },
+        "friendCode": {
+          "type": "string",
+          "maxLength": 16,
+          "description": "Short searchable friend code"
+        },
+        "friends": {
+          "type": "array",
+          "description": "List of accepted friend UIDs"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "accountName", "friendCode"]
+    },
+    "FriendRequest": {
+      "title": "FriendRequest",
+      "description": "Friend request between two player accounts",
+      "type": "object",
+      "properties": {
+        "fromUid": {
+          "type": "string"
+        },
+        "fromName": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "fromFriendCode": {
+          "type": "string",
+          "maxLength": 16
+        },
+        "toUid": {
+          "type": "string"
+        },
+        "toName": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "declined"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["fromUid", "fromName", "toUid", "toName", "status"]
+    },
+    "RoomInvite": {
+      "title": "RoomInvite",
+      "description": "Real-time invitation sent to a friend to join a Cheese Thief room",
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        },
+        "roomCode": {
+          "type": "string"
+        },
+        "roomName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "fromUid": {
+          "type": "string"
+        },
+        "fromName": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "toUid": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["roomId", "roomCode", "fromUid", "fromName", "toUid"]
+    },
+    "Room": {
+      "title": "Room",
+      "description": "Active in-person digital tabletop room synchronized in real time across players' devices",
+      "type": "object",
+      "properties": {
+        "roomCode": {
+          "type": "string",
+          "pattern": "^[0-9]{4}$",
+          "description": "4-digit numeric room code for players sitting together to join"
+        },
+        "gameId": {
+          "type": "string",
+          "enum": ["cheese-thief", "insider", "avalon"],
+          "description": "Game type selected for this tabletop room"
+        },
+        "hostId": {
+          "type": "string",
+          "description": "UID of the table host"
+        },
+        "hostName": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Display name of the table host"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "lobby",
+            "role_deal",
+            "dice_roll",
+            "night_phases",
+            "follower_phase",
+            "voting",
+            "word_reveal",
+            "question_phase",
+            "discussion_guesser_vote",
+            "general_vote",
+            "game_over"
+          ],
+          "description": "Current lifecycle phase of the board game"
+        },
+        "nightHour": {
+          "type": "number",
+          "description": "Current active night hour (1 to 6 AM in Cheese Thief)"
+        },
+        "stolenHour": {
+          "type": "number",
+          "description": "The secret hour when the cheese was stolen by the Cheese Thief"
+        },
+        "winnerTeam": {
+          "type": "string",
+          "enum": ["mice", "thief", "fall_mouse", "commons", "insider", "nobody", "in_progress", "none"],
+          "description": "Winning team of the match"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["roomCode", "gameId", "hostId", "status"]
+    },
+    "RoomPlayer": {
+      "title": "RoomPlayer",
+      "description": "Player participating in an active tabletop room",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "UID of the player"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Display name or nickname at the table"
+        },
+        "isHost": {
+          "type": "boolean",
+          "description": "Whether this player created the table"
+        },
+        "isReady": {
+          "type": "boolean",
+          "description": "Whether this player is ready to start"
+        },
+        "role": {
+          "type": "string",
+          "description": "Assigned secret role (cheese_thief, accomplice, sleepy_mouse)"
+        },
+        "diceHour": {
+          "type": "number",
+          "description": "Secret wake-up hour rolled on this player's phone (1 to 6)"
+        },
+        "voteTargetId": {
+          "type": "string",
+          "description": "UID of the player this player voted to accuse as the thief"
+        },
+        "joinedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "isHost", "isReady"]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Persistent player ELO ranking and match statistics",
+      "type": "object",
+      "properties": {
+        "playerName": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "overallElo": {
+          "type": "number"
+        },
+        "matchesPlayed": {
+          "type": "number"
+        },
+        "wins": {
+          "type": "number"
+        },
+        "winRate": {
+          "type": "number"
+        },
+        "favoriteGame": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["playerName", "overallElo", "matchesPlayed", "wins"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Registered user accounts and friend lists"
+    },
+    "/friend_requests/{requestId}": {
+      "schema": "FriendRequest",
+      "description": "Pending and accepted friend requests between users"
+    },
+    "/room_invites/{inviteId}": {
+      "schema": "RoomInvite",
+      "description": "Real-time room invitations sent between friends"
+    },
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Active in-person tabletop game rooms"
+    },
+    "/rooms/{roomId}/players/{playerId}": {
+      "schema": "RoomPlayer",
+      "description": "Players seated at the table"
+    },
+    "/leaderboard/{playerId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Global persistent rankings and player records"
+    }
+  }
+}

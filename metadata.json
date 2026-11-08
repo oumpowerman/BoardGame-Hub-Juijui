@@ -1,0 +1,6 @@
+{
+  "name": "TabletopNexus — เว็บบอร์ดเกม & Master Server ออนไลน์",
+  "description": "แพลตฟอร์มคอมมูนิตี้บอร์ดเกมออนไลน์ รองรับการแบ่งหมวดหมู่เกม ระบบพูดคุยและแสดงความคิดเห็นแบบเรียลไทม์ผ่าน WebSocket ฟอรัมย่อยสำหรับแต่ละเกม (หนูขโมยชีส, Avalon และอื่นๆ) ระบบ Master Server สำหรับสร้างห้องเล่นสด และตารางจัดอันดับผู้เล่น",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

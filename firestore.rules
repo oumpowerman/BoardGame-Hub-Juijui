@@ -1,0 +1,145 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // Validation for UserProfile documents
+    function isValidUserProfile(data) {
+      return data.uid is string &&
+             data.uid.size() > 0 &&
+             data.uid.size() <= 128 &&
+             data.accountName is string &&
+             data.accountName.size() > 0 &&
+             data.accountName.size() <= 50 &&
+             data.friendCode is string &&
+             data.friendCode.size() > 0 &&
+             data.friendCode.size() <= 16 &&
+             data.friends is list &&
+             data.friends.size() <= 200;
+    }
+
+    // Validation for FriendRequest documents
+    function isValidFriendRequest(data) {
+      return data.fromUid is string &&
+             data.fromUid.size() > 0 &&
+             data.fromUid.size() <= 128 &&
+             data.fromName is string &&
+             data.fromName.size() > 0 &&
+             data.fromName.size() <= 50 &&
+             data.toUid is string &&
+             data.toUid.size() > 0 &&
+             data.toUid.size() <= 128 &&
+             data.toName is string &&
+             data.toName.size() > 0 &&
+             data.toName.size() <= 50 &&
+             data.status in ['pending', 'accepted', 'declined'];
+    }
+
+    // Validation for RoomInvite documents
+    function isValidRoomInvite(data) {
+      return data.roomId is string &&
+             data.roomId.size() > 0 &&
+             data.roomId.size() <= 128 &&
+             data.roomCode is string &&
+             data.roomCode.size() == 4 &&
+             data.fromUid is string &&
+             data.fromUid.size() > 0 &&
+             data.fromUid.size() <= 128 &&
+             data.fromName is string &&
+             data.fromName.size() > 0 &&
+             data.fromName.size() <= 50 &&
+             data.toUid is string &&
+             data.toUid.size() > 0 &&
+             data.toUid.size() <= 128;
+    }
+
+    // Validation for Room documents
+    function isValidRoom(data) {
+      return data.roomCode is string &&
+             data.roomCode.size() == 4 &&
+             data.roomCode.matches('^[0-9]{4}$') &&
+             data.gameId in ['cheese-thief', 'insider', 'avalon'] &&
+             data.hostId is string &&
+             data.hostId.size() <= 128 &&
+             data.status in ['lobby', 'role_deal', 'dice_roll', 'night_phases', 'follower_phase', 'voting', 'word_reveal', 'question_phase', 'discussion_guesser_vote', 'general_vote', 'game_over'];
+    }
+
+    // Validation for Player documents in a Room
+    function isValidPlayer(data) {
+      return data.id is string &&
+             data.id.size() <= 128 &&
+             data.name is string &&
+             data.name.size() > 0 &&
+             data.name.size() <= 60 &&
+             data.isHost is bool &&
+             data.isReady is bool;
+    }
+
+    // Validation for Leaderboard documents
+    function isValidLeaderboard(data) {
+      return data.playerName is string &&
+             data.playerName.size() > 0 &&
+             data.playerName.size() <= 60 &&
+             data.overallElo is number &&
+             data.matchesPlayed is number &&
+             data.wins is number;
+    }
+
+    // Users Collection for Account Setup & Friend Discovery
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if isValidId(userId) && isValidUserProfile(incoming());
+      allow delete: if false;
+    }
+
+    // Friend Requests Collection
+    match /friend_requests/{requestId} {
+      allow read: if true;
+      allow create, update: if isValidId(requestId) && isValidFriendRequest(incoming());
+      allow delete: if true;
+    }
+
+    // Room Invites Collection
+    match /room_invites/{inviteId} {
+      allow read: if true;
+      allow create, update: if isValidId(inviteId) && isValidRoomInvite(incoming());
+      allow delete: if true;
+    }
+
+    // Rooms Collection for Digital Tabletop Gaming
+    match /rooms/{roomId} {
+      allow read: if true;
+      allow create: if isValidId(roomId) && isValidRoom(incoming());
+      allow update: if isValidId(roomId) && isValidRoom(incoming());
+      allow delete: if true;
+
+      // Subcollection for Players seated at the room
+      match /players/{playerId} {
+        allow read: if true;
+        allow create: if isValidId(playerId) && isValidPlayer(incoming());
+        allow update: if isValidId(playerId) && isValidPlayer(incoming());
+        allow delete: if true;
+      }
+    }
+
+    // Leaderboard Collection
+    match /leaderboard/{playerId} {
+      allow read: if true;
+      allow create, update: if isValidId(playerId) && isValidLeaderboard(incoming());
+      allow delete: if false;
+    }
+  }
+}
