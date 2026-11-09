@@ -33,6 +33,36 @@ export async function toggleFallMouseMode(
   }
 }
 
+// 1.1 Set Night Hour Duration (in seconds: 5, 8, 10, 15, 20)
+export async function setCheeseNightDuration(
+  roomId: string,
+  durationSeconds: number
+): Promise<void> {
+  try {
+    await updateDoc(doc(db, 'rooms', roomId), {
+      cheeseNightDuration: durationSeconds,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}`);
+  }
+}
+
+// 1.2 Toggle Pause / Resume Night Countdown
+export async function toggleCheeseNightPause(
+  roomId: string,
+  isPaused: boolean
+): Promise<void> {
+  try {
+    await updateDoc(doc(db, 'rooms', roomId), {
+      cheeseNightPaused: isPaused,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}`);
+  }
+}
+
 // 2. Start Game & Deal Official Cheese Thief Cards (Step 1 -> Step 2)
 export async function startGameAndDealRoles(roomId: string): Promise<void> {
   const user = await ensureAuthUser();
@@ -283,6 +313,7 @@ export async function advanceNightHour(
     if (targetHour <= 6) {
       await updateDoc(roomRef, {
         nightHour: targetHour,
+        cheeseNightPaused: false,
         cheeseStolen: currentStolen || targetHour > roomData.stolenHour,
         updatedAt: new Date().toISOString(),
       });

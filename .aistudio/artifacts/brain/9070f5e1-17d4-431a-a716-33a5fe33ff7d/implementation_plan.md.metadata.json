@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for the smooth zoom & card entrance transition with pastel sparkles and pulsing magical seal loading animation when creating a new Avalon table.",
-  "updatedAt":  "2026-11-09T12:56:34.876330393Z",
+  "summary":  "Implementation plan for Cheese Thief night phase timer controls: customizable duration (5s-20s) both in lobby and on-the-fly, synchronized pause/resume controls, and next-hour skip actions.",
+  "updatedAt":  "2026-11-09T13:47:26.915159274Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

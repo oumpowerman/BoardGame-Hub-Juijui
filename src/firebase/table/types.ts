@@ -87,6 +87,8 @@ export interface FirestoreRoom {
   cheeseStolen?: boolean; // Whether the thief has grabbed the cheese in their hour
   enableFallMouse?: boolean; // Special mode for 6-8 players
   followerIds?: string[]; // UIDs of players who became Followers (ลูกน้อง)
+  cheeseNightDuration?: number; // Duration in seconds per night hour (default 10)
+  cheeseNightPaused?: boolean; // Whether night countdown is paused by host
   // Insider Specific Fields
   wordCategory?: InsiderWordCategoryId;
   wordCategoryLabel?: string;
@@ -133,6 +135,7 @@ export interface FirestoreRoom {
     pointsAwarded: Record<string, number>;
   };
   // Avalon Specific Fields
+  avalonTargetPlayers?: number;
   avalonRoleMode?: 'auto' | 'manual';
   avalonEnableMerlin?: boolean;
   avalonEnableAssassin?: boolean;

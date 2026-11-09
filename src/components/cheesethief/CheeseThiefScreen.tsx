@@ -17,6 +17,8 @@ import {
   joinTableRoom,
   togglePlayerReady,
   toggleFallMouseMode,
+  setCheeseNightDuration,
+  toggleCheeseNightPause,
   startGameAndDealRoles,
   acknowledgePlayerRole,
   submitSecretDiceRoll,
@@ -600,6 +602,9 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
                       onToggleFallMouse={(enabled) =>
                         toggleFallMouseMode(activeRoom.id, enabled)
                       }
+                      onChangeNightDuration={(sec) =>
+                        setCheeseNightDuration(activeRoom.id, sec)
+                      }
                       onAddPracticeTablemate={() =>
                         addPracticeTablemate(activeRoom.id)
                       }
@@ -649,6 +654,12 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
                       }
                       onAdvanceNightHour={(h) =>
                         advanceNightHour(activeRoom.id, h)
+                      }
+                      onToggleNightPause={(paused) =>
+                        toggleCheeseNightPause(activeRoom.id, paused)
+                      }
+                      onChangeNightDuration={(sec) =>
+                        setCheeseNightDuration(activeRoom.id, sec)
                       }
                       onSelectVoteTarget={setSelectedVoteTarget}
                       onCastVote={handleCastVote}

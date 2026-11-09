@@ -15,11 +15,13 @@ export interface UseCheeseThiefGameMasterReturn {
   setIsHostVoiceEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   hourSecondsLeft: number;
   debateSecondsLeft: number;
+  nightDuration: number;
+  isNightPaused: boolean;
 }
 
 /**
  * Custom Hook isolating Thai Game Master Speech Synthesizer (TTS),
- * 10-second night hour timer, 90-second debate countdown, and fanfare audio.
+ * Customizable night hour timer (5-20s), pause/resume support, 90-second debate countdown, and fanfare audio.
  */
 export function useCheeseThiefGameMaster({
   activeRoom,
@@ -27,7 +29,9 @@ export function useCheeseThiefGameMaster({
   currentUid,
 }: UseCheeseThiefGameMasterOptions): UseCheeseThiefGameMasterReturn {
   const [isHostVoiceEnabled, setIsHostVoiceEnabled] = useState<boolean>(true);
-  const [hourSecondsLeft, setHourSecondsLeft] = useState<number>(10);
+  const nightDuration = activeRoom?.cheeseNightDuration || 10;
+  const isNightPaused = Boolean(activeRoom?.cheeseNightPaused);
+  const [hourSecondsLeft, setHourSecondsLeft] = useState<number>(nightDuration);
   const [debateSecondsLeft, setDebateSecondsLeft] = useState<number>(90);
 
   // Stop ongoing narration on unmount
@@ -37,21 +41,24 @@ export function useCheeseThiefGameMaster({
     };
   }, []);
 
-  // Moderator 10-Second Auto-Timer per Night Hour (1:00 to 6:00 AM) + Chimes & Thai TTS Narration
+  // Moderator Auto-Timer per Night Hour (1:00 to 6:00 AM) + Chimes & Thai TTS Narration
   useEffect(() => {
     if (!activeRoom || activeRoom.status !== 'night_phases') {
-      setHourSecondsLeft(10);
+      setHourSecondsLeft(activeRoom?.cheeseNightDuration || 10);
       return;
     }
 
     const isHost = activeRoom.hostId === currentUid;
     const currentHour = activeRoom.nightHour;
-    setHourSecondsLeft(10);
+    const duration = activeRoom.cheeseNightDuration || 10;
+    const paused = Boolean(activeRoom.cheeseNightPaused);
+
+    setHourSecondsLeft(duration);
 
     let cleanupOpening: (() => void) | undefined;
 
     // Host device acts as the central Tabletop Game Master speaker
-    if (isHost && isHostVoiceEnabled) {
+    if (isHost && isHostVoiceEnabled && !paused) {
       if (currentHour === 1) {
         thaiGameMaster.speakNightBegins();
         const t = window.setTimeout(() => {
@@ -61,16 +68,22 @@ export function useCheeseThiefGameMaster({
       } else if (currentHour >= 2 && currentHour <= 6) {
         thaiGameMaster.speakHourWake(currentHour);
       }
-    } else if (currentHour >= 1 && currentHour <= 6) {
+    } else if (currentHour >= 1 && currentHour <= 6 && !paused) {
       // Non-host devices or muted mode play gentle sound chime
       tableAudio.playHourChime(currentHour);
     }
 
     const interval = window.setInterval(() => {
       setHourSecondsLeft((prev) => {
-        // At second 4, command to close eyes
+        // If host paused the night phase, freeze countdown without decrementing
+        if (activeRoom.cheeseNightPaused) {
+          return prev;
+        }
+
+        // At second 4 (or near half-time for short durations), command to close eyes
+        const sleepTriggerSec = Math.max(2, Math.min(4, Math.floor(duration / 2)));
         if (
-          prev === 4 &&
+          prev === sleepTriggerSec &&
           isHost &&
           isHostVoiceEnabled &&
           currentHour >= 1 &&
@@ -96,6 +109,8 @@ export function useCheeseThiefGameMaster({
     activeRoom?.id,
     activeRoom?.status,
     activeRoom?.nightHour,
+    activeRoom?.cheeseNightDuration,
+    activeRoom?.cheeseNightPaused,
     activeRoom?.hostId,
     currentUid,
     isHostVoiceEnabled,
@@ -167,5 +182,7 @@ export function useCheeseThiefGameMaster({
     setIsHostVoiceEnabled,
     hourSecondsLeft,
     debateSecondsLeft,
+    nightDuration,
+    isNightPaused,
   };
 }

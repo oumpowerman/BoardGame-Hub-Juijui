@@ -16,6 +16,7 @@ import {
   QrCode,
   Share2,
   AlertCircle,
+  Clock,
 } from 'lucide-react';
 import { FirestoreRoom, FirestorePlayer } from '../../firebase/tableService';
 import { UserProfile } from '../../firebase/userService';
@@ -36,6 +37,7 @@ interface InPersonLobbyProps {
   onToggleReady: () => void;
   onStartGame: () => void;
   onToggleFallMouse?: (enabled: boolean) => void;
+  onChangeNightDuration?: (seconds: number) => void;
   onAddPracticeTablemate?: () => void;
   onRemovePlayer?: (playerId: string) => void;
   onInviteFriend?: (friend: UserProfile) => void;
@@ -67,6 +69,7 @@ export const InPersonLobby: React.FC<InPersonLobbyProps> = ({
   onToggleReady,
   onStartGame,
   onToggleFallMouse,
+  onChangeNightDuration,
   onAddPracticeTablemate,
   onRemovePlayer,
   onInviteFriend,
@@ -346,6 +349,41 @@ export const InPersonLobby: React.FC<InPersonLobbyProps> = ({
                 : 'โหมดปกติ'}
             </span>
           )}
+        </div>
+
+        {/* Night Hour Duration Setting (5s - 20s) */}
+        <div className="pt-2.5 border-t border-amber-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="text-xs">
+            <span className="font-bold text-amber-950 inline-flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-amber-700" />
+              <span>ความยาวนับถอยหลังต่อชั่วโมงกลางคืน (ตี 1 ถึง ตี 6)</span>
+            </span>
+            <p className="text-[11px] text-slate-500">
+              กำหนดเวลาให้ผู้เล่นลืมตาขโมยชีสหรือส่องถ้วยเต๋าในแต่ละชั่วโมง (ค่าเริ่มต้น 10 วิ)
+            </p>
+          </div>
+
+          <div className="inline-flex items-center gap-1 p-1 bg-amber-50/80 border border-amber-200 rounded-xl shrink-0">
+            {[5, 8, 10, 15, 20].map((sec) => {
+              const currentDur = currentRoom.cheeseNightDuration || 10;
+              const isSelected = currentDur === sec;
+              return (
+                <button
+                  key={sec}
+                  type="button"
+                  disabled={!isHost || isLoading}
+                  onClick={() => onChangeNightDuration?.(sec)}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-amber-600 text-white shadow-2xs font-extrabold'
+                      : 'text-amber-900 hover:bg-amber-100'
+                  }`}
+                >
+                  {sec}s
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

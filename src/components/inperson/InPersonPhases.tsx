@@ -33,6 +33,8 @@ export interface InPersonPhasesProps {
   onSelectFollowers: (targetIds: string[]) => void;
   onConfirmFollowerPhase: () => void;
   onAdvanceNightHour: (hour: number) => void;
+  onToggleNightPause?: (isPaused: boolean) => void;
+  onChangeNightDuration?: (seconds: number) => void;
   onSelectVoteTarget: (targetId: string) => void;
   onCastVote: () => void;
   onPlayAgain: () => void;
@@ -61,6 +63,8 @@ export const InPersonPhases: React.FC<InPersonPhasesProps> = ({
   onSelectFollowers,
   onConfirmFollowerPhase,
   onAdvanceNightHour,
+  onToggleNightPause,
+  onChangeNightDuration,
   onSelectVoteTarget,
   onCastVote,
   onPlayAgain,
@@ -199,6 +203,8 @@ export const InPersonPhases: React.FC<InPersonPhasesProps> = ({
             onGrabCheese={onGrabCheese}
             onPeekPlayerCup={onPeekPlayerCup}
             onAdvanceNightHour={onAdvanceNightHour}
+            onToggleNightPause={onToggleNightPause}
+            onChangeNightDuration={onChangeNightDuration}
           />
         )}
 

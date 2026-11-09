@@ -48,11 +48,49 @@ export const AvalonLobby: React.FC<AvalonLobbyProps> = ({
 }) => {
   const [detailRoleKey, setDetailRoleKey] = useState<string | null>(null);
   const [isRolesExpanded, setIsRolesExpanded] = useState<boolean>(false);
+  const [selectedTargetCount, setSelectedTargetCount] = useState<number>(() => {
+    return currentRoom.avalonTargetPlayers || Math.min(10, Math.max(5, players.length));
+  });
+  const [isAutoFilling, setIsAutoFilling] = useState<boolean>(false);
 
   const isHost = currentRoom.hostId === currentUid;
   const totalPlayers = players.length;
-  const clampedCount = Math.min(10, Math.max(5, totalPlayers));
-  const matrix = AVALON_QUEST_MATRIX[clampedCount] || AVALON_QUEST_MATRIX[5];
+
+  // Auto-bump target if joined players exceed selected target
+  React.useEffect(() => {
+    if (players.length > selectedTargetCount) {
+      const newTarget = Math.min(10, players.length);
+      setSelectedTargetCount(newTarget);
+      if (isHost) {
+        onUpdateSettings({ targetPlayers: newTarget });
+      }
+    }
+  }, [players.length, selectedTargetCount, isHost, onUpdateSettings]);
+
+  React.useEffect(() => {
+    if (currentRoom.avalonTargetPlayers && currentRoom.avalonTargetPlayers !== selectedTargetCount) {
+      setSelectedTargetCount(currentRoom.avalonTargetPlayers);
+    }
+  }, [currentRoom.avalonTargetPlayers, selectedTargetCount]);
+
+  const targetCount = selectedTargetCount;
+  const matrix = AVALON_QUEST_MATRIX[targetCount] || AVALON_QUEST_MATRIX[5];
+  const remainingNeeded = Math.max(0, targetCount - totalPlayers);
+
+  // Quick fill remaining slots with bots
+  const handleQuickFillBots = async () => {
+    if (!onAddBot || isAutoFilling || remainingNeeded <= 0) return;
+    setIsAutoFilling(true);
+    try {
+      for (let i = 0; i < remainingNeeded; i++) {
+        await onAddBot();
+      }
+    } catch {
+      // Handled in parent
+    } finally {
+      setIsAutoFilling(false);
+    }
+  };
 
   const roleMode = currentRoom.avalonRoleMode || 'auto';
   const enableMerlin = currentRoom.avalonEnableMerlin ?? true;
@@ -62,7 +100,7 @@ export const AvalonLobby: React.FC<AvalonLobbyProps> = ({
   const enableMordred = currentRoom.avalonEnableMordred ?? false;
   const enableOberon = currentRoom.avalonEnableOberon ?? false;
 
-  // Active special roles counts
+  // Active special roles counts based on selected target matrix
   const specialGoodCount = (enableMerlin ? 1 : 0) + (enablePercival ? 1 : 0);
   const loyalServantsCount = Math.max(0, matrix.goodCount - specialGoodCount);
 
@@ -76,21 +114,78 @@ export const AvalonLobby: React.FC<AvalonLobbyProps> = ({
   return (
     <div className="space-y-6">
       {/* 1. Player Ratio & Matrix Ribbon */}
-      <div className="p-5 bg-gradient-to-r from-emerald-100 via-white to-amber-100 border-2 border-emerald-300 rounded-3xl space-y-3 shadow-xs">
+      <div className="p-5 bg-gradient-to-r from-emerald-100 via-white to-amber-100 border-2 border-emerald-300 rounded-3xl space-y-3.5 shadow-xs">
+        {/* Target Capacity Selector Tabs */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-emerald-200">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+            <span className="p-1 rounded-lg bg-emerald-100 text-emerald-800">🎯</span>
+            <span>กำหนดสัดส่วนโต๊ะเป้าหมาย:</span>
+            <span className="text-[11px] font-normal text-slate-500">(เลือกพรีวิวสัดส่วน 5–10 คน)</span>
+          </div>
+
+          <div className="inline-flex items-center gap-1 p-1 bg-emerald-50/90 border border-emerald-200/90 rounded-2xl overflow-x-auto max-w-full">
+            {[5, 6, 7, 8, 9, 10].map((cnt) => {
+              const isSelected = targetCount === cnt;
+              return (
+                <button
+                  key={cnt}
+                  type="button"
+                  disabled={!isHost || isLoading}
+                  onClick={() => {
+                    onPlayFlipSound?.();
+                    setSelectedTargetCount(cnt);
+                    if (isHost) onUpdateSettings({ targetPlayers: cnt });
+                  }}
+                  className={`px-3 py-1 text-xs font-extrabold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                    isSelected
+                      ? 'bg-emerald-700 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-emerald-100/70'
+                  }`}
+                >
+                  {cnt} คน
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Faction Ratio & Quick Bot Top-Up */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200 pb-3">
           <div className="flex items-center gap-2">
             <span className="p-1.5 bg-emerald-700 text-white rounded-xl text-base">
               ⚔️
             </span>
             <div>
-              <h2 className="text-base font-black text-slate-900">
-                สัดส่วนผู้เล่น {totalPlayers} คน {totalPlayers < 5 && '(แนะนำ 5–10 คน)'}
-              </h2>
-              <p className="text-xs text-slate-600">
-                {totalPlayers < 5
-                  ? 'กดปุ่ม "+ เพิ่มบอทซ้อมมือ" ด้านล่างเพื่อให้ครบ 5 คนสำหรับการทดสอบระบบ'
-                  : 'จำนวนผู้เล่นพร้อมทำภารกิจและเริ่มศึกอัศวินโต๊ะกลม'}
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-black text-slate-900">
+                  สัดส่วนโต๊ะ {targetCount} คน
+                </h2>
+                <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+                  ผู้เล่นในห้อง {totalPlayers}/{targetCount} คน
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mt-0.5">
+                {remainingNeeded > 0
+                  ? `ขาดอีก ${remainingNeeded} คนเพื่อให้ครบสัดส่วนที่เลือกไว้`
+                  : `ผู้เล่นครบ ${targetCount} คนตามสัดส่วนแล้ว พร้อมเริ่มศึกอัศวินโต๊ะกลม!`}
               </p>
+              {remainingNeeded > 0 && isHost && onAddBot && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
+                  type="button"
+                  disabled={isLoading || isAutoFilling}
+                  onClick={handleQuickFillBots}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-extrabold text-amber-950 bg-amber-200/90 hover:bg-amber-300 border border-amber-300 rounded-xl transition-all cursor-pointer shadow-2xs mt-2"
+                >
+                  <Bot className="w-3.5 h-3.5 text-amber-800" />
+                  <span>
+                    {isAutoFilling
+                      ? 'กำลังเติมบอท...'
+                      : `+ เติมบอทให้ครบ ${targetCount} คน (ขาดอีก ${remainingNeeded} คน)`}
+                  </span>
+                </motion.button>
+              )}
             </div>
           </div>
 
@@ -107,7 +202,7 @@ export const AvalonLobby: React.FC<AvalonLobbyProps> = ({
         {/* Quest Team Sizes */}
         <div className="space-y-1.5">
           <span className="text-xs font-bold text-emerald-900 block">
-            จำนวนอัศวินทำภารกิจ 5 รอบประจำสัดส่วนนี้:
+            จำนวนอัศวินทำภารกิจ 5 รอบประจำสัดส่วน {targetCount} คนนี้:
           </span>
           <div className="grid grid-cols-5 gap-2 text-center text-xs font-mono font-bold">
             {matrix.quests.map((q, idx) => (

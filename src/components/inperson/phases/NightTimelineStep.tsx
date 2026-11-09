@@ -7,6 +7,10 @@ import {
   Hand,
   Search,
   ChevronRight,
+  Pause,
+  Play,
+  FastForward,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { FirestoreRoom, FirestorePlayer } from '../../../firebase/tableService';
 import { HOUR_THAI_NAMES } from './phaseUtils';
@@ -26,6 +30,8 @@ interface NightTimelineStepProps {
   onGrabCheese: () => void;
   onPeekPlayerCup: (targetPlayerId: string) => void;
   onAdvanceNightHour: (hour: number) => void;
+  onToggleNightPause?: (isPaused: boolean) => void;
+  onChangeNightDuration?: (seconds: number) => void;
 }
 
 export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
@@ -43,8 +49,13 @@ export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
   onGrabCheese,
   onPeekPlayerCup,
   onAdvanceNightHour,
+  onToggleNightPause,
+  onChangeNightDuration,
 }) => {
   const totalPlayers = players.length;
+  const isHost = currentRoom.hostId === currentUid;
+  const currentDuration = currentRoom.cheeseNightDuration || 10;
+  const isNightPaused = Boolean(currentRoom.cheeseNightPaused);
 
   return (
     <motion.div
@@ -61,9 +72,17 @@ export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
             <Moon className="w-3.5 h-3.5 text-indigo-600" />
             <span>STEP 4: Moderator ขานเวลากลางคืน (ตี 1 ถึง ตี 6 นาฬิกา)</span>
           </span>
-          <span className="px-3 py-1 bg-amber-100 text-amber-950 border border-amber-300 rounded-full text-xs font-mono font-extrabold inline-flex items-center gap-1">
+          <span className={`px-3 py-1 rounded-full text-xs font-mono font-extrabold inline-flex items-center gap-1 border transition-all ${
+            isNightPaused
+              ? 'bg-amber-100 text-amber-950 border-amber-400 ring-2 ring-amber-300'
+              : 'bg-amber-100 text-amber-950 border-amber-300'
+          }`}>
             <Clock className="w-3.5 h-3.5 text-amber-700" />
-            <span>นับถอยหลังชั่วโมงนี้: {hourSecondsLeft} วินาที</span>
+            <span>
+              {isNightPaused
+                ? `⏸️ หยุดชั่วคราวที่: ${hourSecondsLeft} วิ (จาก ${currentDuration}s)`
+                : `นับถอยหลังชั่วโมงนี้: ${hourSecondsLeft} / ${currentDuration} วิ`}
+            </span>
           </span>
         </div>
 
@@ -71,7 +90,9 @@ export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
           🔊 &ldquo;ขณะนี้เวลา ตี {currentRoom.nightHour}:00 นาฬิกา!&rdquo;
         </div>
         <div className="text-sm font-extrabold text-amber-900 bg-amber-100/80 px-3 py-1 rounded-xl inline-block">
-          {hourSecondsLeft > 3
+          {isNightPaused
+            ? '⏸️ พักหยุดเวลาไว้ชั่วคราว เพื่อให้ผู้เล่นจัดเตรียมความพร้อม'
+            : hourSecondsLeft > 3
             ? `📢 หนูตี${
                 HOUR_THAI_NAMES[currentRoom.nightHour] || currentRoom.nightHour
               } ลืมตา... ตรวจดูรอบตัวหรือส่องถ้วยเต๋า`
@@ -92,13 +113,25 @@ export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
         </div>
       </div>
 
-      {/* 10-Second Moderator Progress Bar */}
-      <div className="w-full h-2 bg-indigo-100 rounded-full overflow-hidden">
+      {/* Moderator Progress Bar with Pause Indicator */}
+      <div className="w-full h-2 bg-indigo-100 rounded-full overflow-hidden relative">
         <div
-          style={{ width: `${(hourSecondsLeft / 10) * 100}%` }}
-          className="h-full bg-gradient-to-r from-amber-400 to-rose-400 transition-all duration-700"
+          style={{ width: `${Math.min(100, Math.max(0, (hourSecondsLeft / currentDuration) * 100))}%` }}
+          className={`h-full transition-all duration-700 ${
+            isNightPaused
+              ? 'bg-amber-500 animate-pulse'
+              : 'bg-gradient-to-r from-amber-400 to-rose-400'
+          }`}
         />
       </div>
+
+      {/* Paused Alert Pill */}
+      {isNightPaused && (
+        <div className="p-3 bg-amber-50 border border-amber-300 text-amber-950 font-bold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-2xs">
+          <Pause className="w-4 h-4 text-amber-700 shrink-0" />
+          <span>หัวหน้าโต๊ะกำลังหยุดเวลาชั่วคราว (ทุกคนหยุดรอนิ่งๆ และหลับตาตามกติกา)</span>
+        </div>
+      )}
 
       {/* Dynamic State: Awake vs Sleeping */}
       <div
@@ -281,23 +314,97 @@ export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
         ))}
       </div>
 
-      {/* Manual Skip / Advance Hour Button */}
-      <button
-        type="button"
-        onClick={() => onAdvanceNightHour(currentRoom.nightHour + 1)}
-        className="w-full py-3.5 px-5 text-sm font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 rounded-2xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 min-h-[48px]"
-      >
-        <span>
-          {currentRoom.nightHour < 6
-            ? `ข้ามไปชั่วโมงถัดไป: ตี ${
-                currentRoom.nightHour + 1
-              }:00 น. (${hourSecondsLeft}s)`
-            : totalPlayers >= 5
-            ? `ครบ 6 ชั่วโมง → ไปช่วงตั้งลูกน้อง (Follower Phase สำหรับ ${totalPlayers} คน)`
-            : 'ครบ 6 ชั่วโมง → เข้าสู่ตอนเช้า (ถกเถียง & โหวต)'}
-        </span>
-        <ChevronRight className="w-4 h-4" />
-      </button>
+      {/* HOST PLAYBACK & NIGHT TIMER HUD CONTROLS */}
+      {isHost ? (
+        <div className="p-4 bg-amber-50/90 border border-amber-300 rounded-2xl shadow-xs space-y-3 text-left">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/80 pb-2">
+            <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-amber-700" />
+              <span>แผงควบคุมเวลาช่วงกลางคืน (หัวหน้าโต๊ะ)</span>
+            </span>
+
+            {/* Quick On-the-Fly Duration Selector */}
+            {onChangeNightDuration && (
+              <div className="flex items-center gap-1 text-[11px] font-bold">
+                <span className="text-slate-600 mr-1">ปรับเวลาต่อชั่วโมง:</span>
+                {[5, 8, 10, 15, 20].map((sec) => (
+                  <button
+                    key={sec}
+                    type="button"
+                    onClick={() => onChangeNightDuration(sec)}
+                    className={`px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
+                      currentDuration === sec
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-2xs font-extrabold'
+                        : 'bg-white border-amber-200 text-amber-900 hover:bg-amber-100'
+                    }`}
+                  >
+                    {sec}s
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {/* Pause / Resume Button */}
+            {onToggleNightPause && (
+              <button
+                type="button"
+                onClick={() => onToggleNightPause(!isNightPaused)}
+                className={`py-3 px-4 text-xs sm:text-sm font-extrabold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-2xs ${
+                  isNightPaused
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-amber-200/90 hover:bg-amber-300 text-amber-950 border border-amber-300'
+                }`}
+              >
+                {isNightPaused ? (
+                  <>
+                    <Play className="w-4 h-4 fill-current" />
+                    <span>เล่นต่อนับถอยหลัง (Resume)</span>
+                  </>
+                ) : (
+                  <>
+                    <Pause className="w-4 h-4 fill-current" />
+                    <span>หยุดเวลาชั่วคราว (Pause)</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Skip to Next Hour */}
+            <button
+              type="button"
+              onClick={() => onAdvanceNightHour(currentRoom.nightHour + 1)}
+              className="py-3 px-4 text-xs sm:text-sm font-extrabold text-amber-950 bg-amber-400 hover:bg-amber-300 border border-amber-400 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-2xs"
+            >
+              <FastForward className="w-4 h-4" />
+              <span>
+                {currentRoom.nightHour < 6
+                  ? `ข้ามไปตี ${currentRoom.nightHour + 1}:00 น. ทันที`
+                  : totalPlayers >= 5
+                  ? 'ครบ 6 ชั่วโมง → ไปช่วงตั้งลูกน้อง'
+                  : 'ครบ 6 ชั่วโมง → เข้าสู่ตอนเช้า'}
+              </span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Non-host Skip / Proceed indicator */
+        <button
+          type="button"
+          onClick={() => onAdvanceNightHour(currentRoom.nightHour + 1)}
+          className="w-full py-3 px-4 text-xs sm:text-sm font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 rounded-2xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 min-h-[44px]"
+        >
+          <span>
+            {currentRoom.nightHour < 6
+              ? `ข้ามไปชั่วโมงถัดไป: ตี ${currentRoom.nightHour + 1}:00 น. (${hourSecondsLeft}s)`
+              : totalPlayers >= 5
+              ? `ครบ 6 ชั่วโมง → ไปช่วงตั้งลูกน้อง (Follower Phase)`
+              : 'ครบ 6 ชั่วโมง → เข้าสู่ตอนเช้า (ถกเถียง & โหวต)'}
+          </span>
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      )}
     </motion.div>
   );
 };

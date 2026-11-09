@@ -21,6 +21,7 @@ import { AVALON_QUEST_MATRIX } from '../../data/avalonRules';
 import { recordGameEloUpdates } from './leaderboardService';
 
 export interface AvalonSettingsPayload {
+  targetPlayers?: number;
   roleMode?: 'auto' | 'manual';
   enableMerlin?: boolean;
   enableAssassin?: boolean;
@@ -41,6 +42,7 @@ export async function updateAvalonLobbySettings(
     const updateData: Record<string, unknown> = {
       updatedAt: new Date().toISOString(),
     };
+    if (settings.targetPlayers !== undefined) updateData.avalonTargetPlayers = settings.targetPlayers;
     if (settings.roleMode !== undefined) updateData.avalonRoleMode = settings.roleMode;
     if (settings.enableMerlin !== undefined) updateData.avalonEnableMerlin = settings.enableMerlin;
     if (settings.enableAssassin !== undefined) updateData.avalonEnableAssassin = settings.enableAssassin;

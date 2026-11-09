@@ -1,25 +1,27 @@
-# Avalon: Smooth Table Creation Transition & Magical Seal Animation
+# Cheese Thief: Customizable Night Hour Duration & Pause/Resume Controls
 
-A high-fidelity transition and loading experience when hosts click "เปิดโต๊ะใหม่ (Host)" in Avalon, replacing the sudden screen jump with a smooth zoom entrance, a pulsing King Arthur magical seal with progressive status messages, and pastel sparkle micro-animations.
+Empowering the Cheese Thief (หนูขโมยชีส) table host with full control over the 6 Night Hours (ตี 1 ถึง ตี 6): customizable countdown duration per hour (5s–20s) configurable in both the lobby and on-the-fly, synchronized pause/resume playback controls, and immediate next-hour skip buttons.
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The transition style and loading feedback have been confirmed based on user preferences in Phase 1:
+> The controls and configuration placement have been confirmed based on user answers in Phase 1:
 
-- **Confirmed Decision 1 (Transition Style)**: Smooth zoom and card entrance with pastel sparkles. The landing card gracefully compresses and zooms forward while the lobby cards float and cascade in with pastel radiant glows.
-- **Confirmed Decision 2 (Loading State Feedback)**: Pulsing magical seal with progressive room creation status ("กำลังสลักตราโต๊ะกลม...", "เตรียมที่นั่งอัศวินทั้ง 10...") before seamlessly unveiling the active lobby.
+- **Confirmed Decision 1 (Night Countdown Controls)**: Pause and resume button with next hour skip controls. The host can pause/freeze the countdown timer at any moment (e.g. if a cup is knocked, a player opens their eyes late, or the group needs extra time), and resume smoothly when ready.
+- **Confirmed Decision 2 (Duration Configuration Placement)**: Both in lobby settings before starting and on-the-fly during the night phase, featuring quick presets (`[5s] [8s] [10s (มาตรฐาน)] [15s] [20s]`).
 
 ---
 
 ## 1. Overview & Core Concept
 
-When a player taps **"เปิดโต๊ะใหม่ (Host)"**, the application currently triggers an async Firebase Firestore room creation call with only a standard button disabled state, causing a sudden snap directly into the lobby once the room document is written.
+In **Cheese Thief**, during Step 4 (Night Phase / คืนขโมยชีส):
+- The digital moderator counts through 6 hours sequentially: ตี 1, ตี 2, ตี 3, ตี 4, ตี 5, ตี 6.
+- Currently, the timer is rigidly hardcoded to 10 seconds per hour and auto-advances uncontrollably, with no pause mechanism if players need more time or a brief pause at the table.
 
-This feature introduces a cinematic yet lightweight transition:
-1. **Interactive Tap Effect**: The "เปิดโต๊ะใหม่" button responds with a tactile scale-down and a subtle sparkle burst.
-2. **Magical Seal Loading Modal / Portal**: A centered, pulsing Arthurian seal with rotating pastel runes and a progress indicator that tracks room setup stages without any perceptible lag.
-3. **Smooth Zoom & Cascade Reveal**: As the Firestore snapshot synchronizes, the seal expands into a gentle light burst, and the Lobby cards (Room Header, Player Ratios, Role Setup) slide up and zoom into place with staggered Framer Motion spring physics.
+This enhancement introduces:
+1. **Synchronized Play/Pause Host Controls**: The host can freeze the night timer across all player screens with a clear "⏸️ พักเวลาชั่วคราว" indicator.
+2. **On-the-Fly & Lobby Duration Tuning**: Presets of 5s, 8s, 10s, 15s, and 20s per night hour to fit casual fast-paced groups or beginner slower-paced tables.
+3. **Manual Next Hour Skip**: Immediate jump to the next hour when all awake players have finished their action without waiting for the timer to expire.
 
 ---
 
@@ -28,77 +30,71 @@ This feature introduces a cinematic yet lightweight transition:
 ### Key User Flows
 
 ```
-[ Landing Form ]
-      │  (User clicks "เปิดโต๊ะใหม่ (Host)")
-      ▼
-[ Tap Feedback & Audio Chime ] ───▶ Play soft magical chime & button tactile press
-      │
-      ▼
-[ Pulsing Magical Seal Overlay ] ──▶ Centered Arthurian seal with soft emerald/amber pulse
-      │                              Progressive subtitle ("กำลังเปิดโต๊ะและสร้างรหัสผ่าน...")
-      │
-      ▼ (Firestore room doc created & subscribed)
-[ Smooth Zoom & Cascade Reveal ] ──▶ Seal smoothly scales up & fades
-      │                              ActiveRoomHeader slides in from top (-20px -> 0)
-      │                              Player Ratio card scales from 0.96 -> 1.0 with soft pastel aura
-      ▼
-[ Active Lobby State ]
+[ In-Person Lobby ]
+  └── Host selects Night Duration: [5s] [8s] [10s (ค่าเริ่มต้น)] [15s] [20s]
+          │
+          ▼
+[ Step 4: Night Phase (ตี 1 - ตี 6) ]
+  ├── Countdown Bar: Ticks down from selected duration (e.g. 15s)
+  ├── Host Playback Controls (Sticky / Inline HUD):
+  │     ├── [ ⏸️ หยุดเวลาชั่วคราว ] / [ ▶️ นับเวลาต่อ ]
+  │     ├── [ ⏭️ ข้ามไปชั่วโมงถัดไป (ตี 2 น.) ]
+  │     └── Quick On-the-Fly Presets: [8s] [10s] [15s] [20s]
+  │
+  └── When Paused:
+        • Timer halts across all player devices
+        • Status pill shows: "⏸️ หัวหน้าโต๊ะหยุดเวลานับถอยหลังชั่วคราว"
+        • Host voice narration pauses until resumed
 ```
 
 ### Visual Identity & Theme
-- **Color Palette**: Light pastel emerald (`#10B981` at 10-20% opacity), warm golden amber (`#F59E0B`), soft off-white surfaces (`#FFFFFF` with `border-emerald-200/90`), and deep readable slate typography (`#0F172A`).
-- **Magical Seal**: Multi-layered SVG seal featuring the Round Table shield, crossed blades, and concentric orbital rings that slowly spin and pulse.
-- **Pastel Sparkles**: 8-12 floating micro-sparkles (`Sparkles` / star glyphs) rendered with staggered float animations in soft lavender, mint, and golden yellow hues.
-
-### Interactive Feedback & Motion
-- **Entrance Duration**: 350ms total transition time to ensure snappy responsiveness without impeding user flow.
-- **Spring Physics**: Settling curves (`type: "spring", stiffness: 380, damping: 28`) for a natural, tactile card entrance.
+- **Color Palette**: Warm amber (`#F59E0B`), cheese gold (`#FBBF24`), midnight indigo (`#312E81`), and soft light pastel surfaces (`#FFFBEB`, `#FFFFFF`, `border-amber-200`).
+- **Playback HUD**: Compact rounded-2xl media-style control panel with Lucide icons (`Pause`, `Play`, `SkipForward`, `Clock`, `Sliders`).
+- **Responsive & Mobile-First**: Fits comfortably on mobile viewports with `min-h-[44px]` touch targets.
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-- **Decision 1: Overlay vs Inline Morphing**
-  - *Chosen Approach*: Lightweight portal overlay that handles the brief async Firestore write (~300-600ms), followed by a cascading layout animation in `AvalonScreen.tsx`.
-  - *Why*: Avoids awkward DOM element reflows while the user's name and room metadata are being written to Firestore.
+- **Decision 1: Firestore Real-Time Sync vs Local Timer**
+  - *Chosen Approach*: Store `cheeseNightDuration` and `cheeseNightPaused` in the `rooms/{roomId}` Firestore document.
+  - *Why*: Ensures that when the host hits Pause, all players seated around the table immediately see the paused state and the countdown stops synchronously on every device.
 
-- **Decision 2: Performance & Mobile Optimization**
-  - *Chosen Approach*: Pure CSS/Framer Motion compositor properties (`transform: scale`, `opacity`, `filter`).
-  - *Why*: Ensures 60fps silky smooth rendering on all mobile phones without triggering layout recalculations or jank.
+- **Decision 2: Audio & Thai TTS Speech Synchronization**
+  - *Chosen Approach*: When paused, cancel/defer the "sleep" reminder voice prompt at the 4-second mark until the timer resumes and actually passes second 4.
+  - *Why*: Prevents awkward spoken commands ("หนูตีสามหลับตา...") while the table is paused.
 
 ---
 
-## 4. Technical Architecture & Component Structure
-
-### Component Flow
+## 4. Technical Architecture & Component Flow
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│                   AvalonScreen.tsx                     │
-│  - isCreatingRoom state                                │
-│  - handleCreateRoom() wrapper                          │
-│                                                        │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │       AvalonCreationTransitionOverlay.tsx        │  │
-│  │  - Pulsing Magical Seal (Shield + Orbit Rings)    │  │
-│  │  - Progressive status text ticker                │  │
-│  │  - Floating pastel sparkle particles             │  │
-│  └──────────────────────────────────────────────────┘  │
-│                                                        │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │       AnimatePresence (Mode="wait")              │  │
-│  │  - Landing View  ──(Zoom Out / Fade)──▶          │  │
-│  │  - Lobby View    ──(Zoom In / Spring Cascade)──▶ │  │
-│  └──────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────┘
+│               Firestore Room Document                  │
+│  - cheeseNightDuration: number (default 10)            │
+│  - cheeseNightPaused: boolean (default false)          │
+└───────────────────────────┬────────────────────────────┘
+                            │
+            ┌───────────────┴───────────────┐
+            ▼                               ▼
+┌───────────────────────┐       ┌────────────────────────┐
+│  InPersonLobby.tsx    │       │ NightTimelineStep.tsx  │
+│  - Preset duration    │       │ - Play / Pause button  │
+│    selector in lobby  │       │ - Next Hour skip       │
+│  - Fall Mouse toggle  │       │ - Live countdown bar   │
+└───────────────────────┘       │ - On-the-fly duration  │
+                                └────────────────────────┘
 ```
 
 ### Planned File Changes (Turn 3 upon approval)
-1. **`src/components/avalon/AvalonCreationTransitionOverlay.tsx`** (New modular component, ~120 lines):
-   - Renders the pulsing Arthurian seal with soft glow aura and rotating runes.
-   - Displays gentle progressive text ("กำลังจัดเตรียมโต๊ะกลม...", "สลักรหัสห้อง 4 หลัก...").
-   - Floats lightweight pastel sparkles around the seal.
-2. **`src/components/avalon/AvalonScreen.tsx`** (Update ~30 lines):
-   - Wrap view switches in `AnimatePresence`.
-   - Trigger creation transition state and sound effect when "เปิดโต๊ะใหม่" is tapped.
-   - Add staggered spring entrance variants for the newly revealed lobby.
+1. **`src/firebase/table/types.ts`**:
+   - Add `cheeseNightDuration?: number;` and `cheeseNightPaused?: boolean;` to `FirestoreRoom`.
+2. **`src/firebase/table/cheeseThiefService.ts`**:
+   - Add `setCheeseNightDuration(roomId, seconds)` and `toggleCheeseNightPause(roomId, isPaused)`.
+3. **`src/components/cheesethief/useCheeseThiefGameMaster.ts`**:
+   - Respect `activeRoom.cheeseNightDuration` (replacing hardcoded 10s) and halt the interval when `activeRoom.cheeseNightPaused === true`.
+4. **`src/components/inperson/phases/NightTimelineStep.tsx`**:
+   - Add Host Playback Control bar: Pause/Resume, Skip Next Hour, and On-the-Fly duration tabs.
+   - Show paused banner for all participants.
+5. **`src/components/inperson/InPersonLobby.tsx`**:
+   - Add Night Hour Duration selector in the Lobby Settings card.
