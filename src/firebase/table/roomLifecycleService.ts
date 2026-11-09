@@ -59,10 +59,10 @@ export async function leaveOrCloseTableRoom(
   }
 }
 
-// 1. Create a Table Room (Supports 4-8 players across Cheese Thief, Insider, etc.)
+// 1. Create a Table Room (Supports 4-8 players across Cheese Thief, Insider, Detective Club, etc.)
 export async function createTableRoom(
   hostName: string,
-  gameId: 'cheese-thief' | 'insider' | 'undercover' | 'avalon' = 'cheese-thief',
+  gameId: 'cheese-thief' | 'insider' | 'undercover' | 'detective-club' | 'avalon' = 'cheese-thief',
   customRoomName?: string,
   maxPlayers: number = 8
 ): Promise<FirestoreRoom> {
@@ -75,10 +75,12 @@ export async function createTableRoom(
   const roomId = `room_${Date.now()}_${roomCode}`;
   const roomPath = `rooms/${roomId}`;
   const cleanHost = hostName.trim() || 'โฮสต์โต๊ะ';
-  const clampedMax = Math.min(8, Math.max(4, maxPlayers));
+  const clampedMax = Math.min(10, Math.max(4, maxPlayers));
 
   const defaultName =
-    gameId === 'undercover'
+    gameId === 'detective-club'
+      ? `โต๊ะสมาคมนักสืบ (Detective Club) ของ ${cleanHost}`
+      : gameId === 'undercover'
       ? `โต๊ะสายลับสลับคำ (Undercover) ของ ${cleanHost}`
       : gameId === 'insider'
       ? `โต๊ะจอมบงการคำใบ้ (Insider) ของ ${cleanHost}`

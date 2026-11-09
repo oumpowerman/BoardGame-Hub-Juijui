@@ -112,7 +112,7 @@
         },
         "gameId": {
           "type": "string",
-          "enum": ["cheese-thief", "insider", "avalon"],
+          "enum": ["cheese-thief", "insider", "undercover", "detective-club", "avalon"],
           "description": "Game type selected for this tabletop room"
         },
         "hostId": {
@@ -137,7 +137,25 @@
             "question_phase",
             "discussion_guesser_vote",
             "general_vote",
-            "game_over"
+            "game_over",
+            "undercover_deal",
+            "undercover_clue",
+            "undercover_vote",
+            "undercover_mrwhite_guess",
+            "undercover_game_over",
+            "dc_word_entry",
+            "dc_card_rounds",
+            "dc_discussion",
+            "dc_voting",
+            "dc_scoring",
+            "avalon_role_reveal",
+            "avalon_team_selection",
+            "avalon_team_vote",
+            "avalon_quest_vote",
+            "avalon_quest_result",
+            "avalon_assassination",
+            "avalon_scoring",
+            "avalon_game_over"
           ],
           "description": "Current lifecycle phase of the board game"
         },
@@ -149,9 +167,40 @@
           "type": "number",
           "description": "The secret hour when the cheese was stolen by the Cheese Thief"
         },
+        "dcSecretWord": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Secret word entered by Active Player in Detective Club"
+        },
+        "dcActivePlayerId": {
+          "type": "string",
+          "description": "UID of Active Player who sets the secret word in Detective Club"
+        },
+        "dcConspiratorId": {
+          "type": "string",
+          "description": "UID of secret Conspirator in Detective Club"
+        },
+        "dcCardRound": {
+          "type": "number",
+          "description": "Physical card placement round on table (1 or 2)"
+        },
         "winnerTeam": {
           "type": "string",
-          "enum": ["mice", "thief", "fall_mouse", "commons", "insider", "nobody", "in_progress", "none"],
+          "enum": [
+            "mice",
+            "thief",
+            "fall_mouse",
+            "commons",
+            "insider",
+            "civilians",
+            "undercover",
+            "mr_white",
+            "detectives",
+            "conspirator",
+            "nobody",
+            "in_progress",
+            "none"
+          ],
           "description": "Winning team of the match"
         },
         "createdAt": {

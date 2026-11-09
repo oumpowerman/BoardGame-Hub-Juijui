@@ -17,7 +17,21 @@ export type GamePhase =
   | 'undercover_clue'
   | 'undercover_vote'
   | 'undercover_mrwhite_guess'
-  | 'undercover_game_over';
+  | 'undercover_game_over'
+  // Detective Club phases
+  | 'dc_word_entry'
+  | 'dc_card_rounds'
+  | 'dc_discussion'
+  | 'dc_voting'
+  | 'dc_scoring'
+  // Avalon phases
+  | 'avalon_role_reveal'
+  | 'avalon_team_selection'
+  | 'avalon_team_vote'
+  | 'avalon_quest_vote'
+  | 'avalon_quest_result'
+  | 'avalon_assassination'
+  | 'avalon_scoring';
 
 export type PlayerRoleCard =
   | 'cheese_thief'
@@ -29,7 +43,20 @@ export type PlayerRoleCard =
   // Undercover roles
   | 'undercover_civilian'
   | 'undercover_spy'
-  | 'undercover_mrwhite';
+  | 'undercover_mrwhite'
+  // Detective Club roles
+  | 'dc_active_player'
+  | 'dc_detective'
+  | 'dc_conspirator'
+  // Avalon roles
+  | 'avalon_merlin'
+  | 'avalon_percival'
+  | 'avalon_loyal_servant'
+  | 'avalon_assassin'
+  | 'avalon_morgana'
+  | 'avalon_mordred'
+  | 'avalon_oberon'
+  | 'avalon_minion';
 
 export interface UndercoverClueEntry {
   round: number;
@@ -39,11 +66,19 @@ export interface UndercoverClueEntry {
   timestamp: string;
 }
 
+export interface AvalonQuestResult {
+  questIndex: number;
+  teamSize: number;
+  successCount: number;
+  failCount: number;
+  passed: boolean;
+}
+
 export interface FirestoreRoom {
   id: string;
   roomCode: string;
   roomName?: string;
-  gameId: 'cheese-thief' | 'insider' | 'undercover' | 'avalon';
+  gameId: 'cheese-thief' | 'insider' | 'undercover' | 'detective-club' | 'avalon';
   hostId: string;
   hostName: string;
   status: GamePhase;
@@ -82,6 +117,40 @@ export interface FirestoreRoom {
   mrWhiteGuessedWord?: string;
   mrWhiteGuessSuccess?: boolean;
   undercoverHistory?: UndercoverClueEntry[];
+  // Detective Club Specific Fields
+  dcSecretWord?: string;
+  dcActivePlayerId?: string;
+  dcConspiratorId?: string;
+  dcRoundNumber?: number;
+  dcCardRound?: number;
+  dcDiscussionDurationSeconds?: number;
+  dcVotes?: Record<string, string>;
+  dcScores?: Record<string, number>;
+  dcRoundSummary?: {
+    caught: boolean;
+    conspiratorName: string;
+    secretWord: string;
+    pointsAwarded: Record<string, number>;
+  };
+  // Avalon Specific Fields
+  avalonRoleMode?: 'auto' | 'manual';
+  avalonEnableMerlin?: boolean;
+  avalonEnableAssassin?: boolean;
+  avalonEnablePercival?: boolean;
+  avalonEnableMorgana?: boolean;
+  avalonEnableMordred?: boolean;
+  avalonEnableOberon?: boolean;
+  avalonLeaderId?: string;
+  avalonCurrentQuestIndex?: number;
+  avalonProposedTeamIds?: string[];
+  avalonTeamVotes?: Record<string, 'approve' | 'reject'>;
+  avalonRejectedTeamsCount?: number;
+  avalonQuestVotes?: Record<string, 'success' | 'fail'>;
+  avalonQuestResults?: AvalonQuestResult[];
+  avalonGoodWinsCount?: number;
+  avalonEvilWinsCount?: number;
+  avalonAssassinationTargetId?: string;
+  avalonAssassinationSuccess?: boolean;
   winnerTeam:
     | 'mice'
     | 'thief'
@@ -91,6 +160,10 @@ export interface FirestoreRoom {
     | 'civilians'
     | 'undercover'
     | 'mr_white'
+    | 'detectives'
+    | 'conspirator'
+    | 'good'
+    | 'evil'
     | 'nobody'
     | 'in_progress'
     | 'none';
@@ -124,6 +197,13 @@ export interface FirestorePlayer {
   isUndercoverEliminated?: boolean;
   currentRoundClue?: string;
   cluesSubmitted?: string[];
+  // Detective Club Specific Fields
+  dcNotebookWord?: string;
+  dcVoteTargetId?: string;
+  dcTotalScore?: number;
+  // Avalon Specific Fields
+  avalonTeamVoteChoice?: 'approve' | 'reject' | '';
+  avalonQuestVoteChoice?: 'success' | 'fail' | '';
   joinedAt: string;
 }
 

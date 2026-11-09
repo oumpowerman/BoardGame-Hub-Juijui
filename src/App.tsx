@@ -26,6 +26,8 @@ import { FriendManagerModal } from './components/friends/FriendManagerModal';
 import { CheeseThiefScreen } from './components/cheesethief/CheeseThiefScreen';
 import { InsiderScreen } from './components/insider/InsiderScreen';
 import { UndercoverScreen } from './components/undercover/UndercoverScreen';
+import { DetectiveClubScreen } from './components/detectiveclub/DetectiveClubScreen';
+import { AvalonScreen } from './components/avalon/AvalonScreen';
 import {
   GameSceneTransition,
   TransitionGameVariant,
@@ -214,6 +216,12 @@ export default function App() {
             winRate: entry.winRate,
           },
           undercover: {
+            elo: entry.overallElo,
+            matches: entry.matchesPlayed,
+            wins: entry.wins,
+            winRate: entry.winRate,
+          },
+          'detective-club': {
             elo: entry.overallElo,
             matches: entry.matchesPlayed,
             wins: entry.wins,
@@ -409,6 +417,52 @@ export default function App() {
     }, 620);
   };
 
+  // Enter the Dedicated Detective Club Screen with Vintage Gold Detective Transition
+  const handleEnterDetectiveClubScreen = (roomCode?: string) => {
+    if (transitionTimerRef.current) {
+      window.clearTimeout(transitionTimerRef.current);
+    }
+    setInitialRoomCode(roomCode || '');
+    setSceneTransition({
+      isVisible: true,
+      direction: 'enter',
+      gameVariant: 'detective-club',
+      roomCode,
+    });
+
+    window.setTimeout(() => {
+      setActiveSection('detective-club-screen');
+      window.scrollTo(0, 0);
+    }, 260);
+
+    transitionTimerRef.current = window.setTimeout(() => {
+      setSceneTransition((prev) => ({ ...prev, isVisible: false }));
+    }, 620);
+  };
+
+  // Enter the Dedicated Avalon Screen with Royal Emerald Scene Transition
+  const handleEnterAvalonScreen = (roomCode?: string) => {
+    if (transitionTimerRef.current) {
+      window.clearTimeout(transitionTimerRef.current);
+    }
+    setInitialRoomCode(roomCode || '');
+    setSceneTransition({
+      isVisible: true,
+      direction: 'enter',
+      gameVariant: 'avalon',
+      roomCode,
+    });
+
+    window.setTimeout(() => {
+      setActiveSection('avalon-screen');
+      window.scrollTo(0, 0);
+    }, 260);
+
+    transitionTimerRef.current = window.setTimeout(() => {
+      setSceneTransition((prev) => ({ ...prev, isVisible: false }));
+    }, 620);
+  };
+
   // Check URL query parameters (?room=... or ?code=...) to auto-join friends
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -420,7 +474,11 @@ export default function App() {
     if (targetRoom) {
       setInitialRoomCode(targetRoom);
       if (currentUser) {
-        if (gameParam === 'undercover') {
+        if (gameParam === 'avalon') {
+          handleEnterAvalonScreen(targetRoom);
+        } else if (gameParam === 'detective-club') {
+          handleEnterDetectiveClubScreen(targetRoom);
+        } else if (gameParam === 'undercover') {
           handleEnterUndercoverScreen(targetRoom);
         } else if (gameParam === 'insider') {
           handleEnterInsiderScreen(targetRoom);
@@ -499,6 +557,12 @@ export default function App() {
   const realUndercoverRooms = firestoreRooms.filter(
     (r) => r.gameId === 'undercover'
   );
+  const realDetectiveClubRooms = firestoreRooms.filter(
+    (r) => r.gameId === 'detective-club'
+  );
+  const realAvalonRooms = firestoreRooms.filter(
+    (r) => r.gameId === 'avalon'
+  );
 
   const currentUserEntry: PlayerRankingEntry =
     leaderboard.find((e) => e.id === currentUser.uid) || {
@@ -517,6 +581,7 @@ export default function App() {
         'cheese-thief': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         insider: { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         undercover: { elo: 1500, matches: 0, wins: 0, winRate: 0 },
+        'detective-club': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         avalon: { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         'werewolf-night': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         'catan-frontier': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
@@ -655,6 +720,28 @@ export default function App() {
           onOpenFriendModal={() => setIsFriendModalOpen(true)}
           onActiveRoomChange={setActiveCheeseRoom}
         />
+      ) : activeSection === 'detective-club-screen' ? (
+        <DetectiveClubScreen
+          currentUser={currentUser}
+          friends={friends}
+          pendingFriendRequestsCount={incomingFriendRequests.length}
+          roomInvites={roomInvites}
+          rooms={firestoreRooms}
+          initialRoomCode={initialRoomCode}
+          onBackToCatalog={() => handleExitGameToSection('catalog', 'detective-club')}
+          onOpenFriendModal={() => setIsFriendModalOpen(true)}
+          onActiveRoomChange={setActiveCheeseRoom}
+        />
+      ) : activeSection === 'avalon-screen' ? (
+        <AvalonScreen
+          currentUser={currentUser}
+          friends={friends}
+          pendingFriendRequestsCount={incomingFriendRequests.length}
+          roomInvites={roomInvites}
+          onBackToCatalog={() => handleExitGameToSection('catalog', 'avalon')}
+          onOpenFriendModal={() => setIsFriendModalOpen(true)}
+          initialRoomCode={initialRoomCode}
+        />
       ) : (
         <>
           {/* Top Bar */}
@@ -667,6 +754,10 @@ export default function App() {
             handleEnterInsiderScreen();
           } else if (sec === 'undercover-screen') {
             handleEnterUndercoverScreen();
+          } else if (sec === 'detective-club-screen') {
+            handleEnterDetectiveClubScreen();
+          } else if (sec === 'avalon-screen') {
+            handleEnterAvalonScreen();
           } else {
             setActiveSection(sec);
           }
@@ -674,6 +765,8 @@ export default function App() {
         onEnterCheeseThiefScreen={() => handleEnterCheeseThiefScreen()}
         onEnterInsiderScreen={() => handleEnterInsiderScreen()}
         onEnterUndercoverScreen={() => handleEnterUndercoverScreen()}
+        onEnterDetectiveClubScreen={() => handleEnterDetectiveClubScreen()}
+        onEnterAvalonScreen={() => handleEnterAvalonScreen()}
         onOpenFriendModal={() => setIsFriendModalOpen(true)}
         onSignOut={handleSignOut}
         currentUser={currentUser}
@@ -682,6 +775,8 @@ export default function App() {
         liveRoomsCount={realCheeseRooms.length}
         liveInsiderRoomsCount={realInsiderRooms.length}
         liveUndercoverRoomsCount={realUndercoverRooms.length}
+        liveDetectiveClubRoomsCount={realDetectiveClubRooms.length}
+        liveAvalonRoomsCount={realAvalonRooms.length}
       />
 
       {/* Live Notification Toast */}
@@ -727,9 +822,13 @@ export default function App() {
                   realCheeseRoomsCount={realCheeseRooms.length}
                   realInsiderRoomsCount={realInsiderRooms.length}
                   realUndercoverRoomsCount={realUndercoverRooms.length}
+                  realDetectiveClubRoomsCount={realDetectiveClubRooms.length}
+                  realAvalonRoomsCount={realAvalonRooms.length}
                   onEnterCheeseThiefScreen={() => handleEnterCheeseThiefScreen()}
                   onEnterInsiderScreen={() => handleEnterInsiderScreen()}
                   onEnterUndercoverScreen={() => handleEnterUndercoverScreen()}
+                  onEnterDetectiveClubScreen={() => handleEnterDetectiveClubScreen()}
+                  onEnterAvalonScreen={() => handleEnterAvalonScreen()}
                   onOpenGameSubForum={handleOpenGameSubForum}
                   onResetFilter={() => {
                     setSelectedCategory('all');
@@ -760,7 +859,19 @@ export default function App() {
               <LeaderboardSection
                 leaderboard={leaderboard}
                 games={BOARD_GAMES}
-                onPlayGameForRank={() => handleEnterCheeseThiefScreen()}
+                onPlayGameForRank={(gameSlug) => {
+                  if (gameSlug === 'insider') {
+                    handleEnterInsiderScreen();
+                  } else if (gameSlug === 'undercover') {
+                    handleEnterUndercoverScreen();
+                  } else if (gameSlug === 'detective-club') {
+                    handleEnterDetectiveClubScreen();
+                  } else if (gameSlug === 'avalon') {
+                    handleEnterAvalonScreen();
+                  } else {
+                    handleEnterCheeseThiefScreen();
+                  }
+                }}
               />
             )}
 
@@ -775,10 +886,10 @@ export default function App() {
         <div className="max-w-[1280px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <span className="p-1 rounded-lg bg-amber-100 text-amber-800">
-              🧀
+              👑
             </span>
             <span>
-              TabletopNexus — แพลตฟอร์มบอร์ดเกมออนไลน์ (หนูขโมยชีส, Insider, Undercover)
+              TabletopNexus — แพลตฟอร์มบอร์ดเกมออนไลน์ (หนูขโมยชีส, Insider, Undercover, Detective Club, Avalon)
             </span>
           </div>
           <div className="flex items-center gap-4">
@@ -802,6 +913,20 @@ export default function App() {
               className="hover:text-amber-700 font-bold transition-colors cursor-pointer"
             >
               เข้าเล่น Undercover
+            </button>
+            <button
+              type="button"
+              onClick={() => handleEnterDetectiveClubScreen()}
+              className="hover:text-amber-700 font-bold transition-colors cursor-pointer"
+            >
+              เข้าเล่น Detective Club
+            </button>
+            <button
+              type="button"
+              onClick={() => handleEnterAvalonScreen()}
+              className="hover:text-amber-700 font-bold transition-colors cursor-pointer"
+            >
+              เข้าเล่น Avalon
             </button>
             <button
               type="button"

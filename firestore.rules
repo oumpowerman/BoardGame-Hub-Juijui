@@ -71,10 +71,40 @@ service cloud.firestore {
       return data.roomCode is string &&
              data.roomCode.size() == 4 &&
              data.roomCode.matches('^[0-9]{4}$') &&
-             data.gameId in ['cheese-thief', 'insider', 'avalon'] &&
+             data.gameId in ['cheese-thief', 'insider', 'undercover', 'detective-club', 'avalon'] &&
              data.hostId is string &&
              data.hostId.size() <= 128 &&
-             data.status in ['lobby', 'role_deal', 'dice_roll', 'night_phases', 'follower_phase', 'voting', 'word_reveal', 'question_phase', 'discussion_guesser_vote', 'general_vote', 'game_over'];
+             data.status in [
+               'lobby',
+               'role_deal',
+               'dice_roll',
+               'night_phases',
+               'follower_phase',
+               'voting',
+               'word_reveal',
+               'question_phase',
+               'discussion_guesser_vote',
+               'general_vote',
+               'game_over',
+               'undercover_deal',
+               'undercover_clue',
+               'undercover_vote',
+               'undercover_mrwhite_guess',
+               'undercover_game_over',
+               'dc_word_entry',
+               'dc_card_rounds',
+               'dc_discussion',
+               'dc_voting',
+               'dc_scoring',
+               'avalon_role_reveal',
+               'avalon_team_selection',
+               'avalon_team_vote',
+               'avalon_quest_vote',
+               'avalon_quest_result',
+               'avalon_assassination',
+               'avalon_scoring',
+               'avalon_game_over'
+             ];
     }
 
     // Validation for Player documents in a Room

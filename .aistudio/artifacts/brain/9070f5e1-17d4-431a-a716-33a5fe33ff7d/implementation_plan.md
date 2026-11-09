@@ -1,180 +1,104 @@
-# Undercover (สายลับสลับคำ) — Real-Time Party Deduction Game
+# Avalon: Smooth Table Creation Transition & Magical Seal Animation
 
-แผนงานออกแบบและสร้างระบบเกม **Undercover (สายลับสลับคำ)** เพิ่มเติมลงในแพลตฟอร์ม TabletopNexus โดยใช้มาตรฐานสถาปัตยกรรมเดียวกับเกมที่มีอยู่ (หนูขโมยชีส และ Insider) ทั้งในด้านการจัดเก็บข้อมูลห้องบน Firebase Firestore, การเปลี่ยนผ่านหน้าจอเกม (Scene Transition) พร้อมโทนสีธีมนักสืบเงียบขรึม, การกระจายบทบาท (Civilians, Undercover, Mr. White), ระบบคำใบ้รอบต่อรอบพร้อมจับเวลา, การโหวตคัดคนออก และการผสานรวม Gemini 3.8 Flash API ฝั่งเซิร์ฟเวอร์เพื่อสร้างชุดคำคู่ภาษาไทยใหม่แบบไม่รู้จบ
-
----
+A high-fidelity transition and loading experience when hosts click "เปิดโต๊ะใหม่ (Host)" in Avalon, replacing the sudden screen jump with a smooth zoom entrance, a pulsing King Arthur magical seal with progressive status messages, and pastel sparkle micro-animations.
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> สรุปข้อตกลงและทิศทางระบบที่ได้รับการยืนยันจากผู้ใช้งานใน Phase 1:
-> 1. **บทบาท Mr. White**: สามารถเลือกเปิดหรือปิดบทบาท Mr. White ได้อย่างอิสระในห้องล็อบบี้ก่อนเริ่มเกม
-> 2. **ระบบการบอกคำใบ้ (Clue Giving)**: รองรับทั้งการพิมพ์ข้อความคำใบ้ในแอป (Turn-Based Chat/Log) และการจับเวลาสำหรับการพูดใบ้ต่อหน้าพร้อมปุ่มกดส่งเทิร์น
-> 3. **คลังคำคู่เปรียบเทียบ (Word Pairs)**: มีชุดคำศัพท์ภาษาไทยในชีวิตประจำวันและหมวดฮิตเป็นค่าเริ่มต้น พร้อมปุ่มเรียก Server-Side Gemini 3.8 Flash เพื่อสร้างคำคู่ภาษาไทยหมวดหมู่ใหม่ตามสั่งแบบอัตโนมัติ
+> The transition style and loading feedback have been confirmed based on user preferences in Phase 1:
+
+- **Confirmed Decision 1 (Transition Style)**: Smooth zoom and card entrance with pastel sparkles. The landing card gracefully compresses and zooms forward while the lobby cards float and cascade in with pastel radiant glows.
+- **Confirmed Decision 2 (Loading State Feedback)**: Pulsing magical seal with progressive room creation status ("กำลังสลักตราโต๊ะกลม...", "เตรียมที่นั่งอัศวินทั้ง 10...") before seamlessly unveiling the active lobby.
 
 ---
 
 ## 1. Overview & Core Concept
 
-- **What It Does**: เกมปาร์ตี้บลัฟและจับโกหกคำศัพท์ (4–10 คน) โดยแบ่งผู้เล่นเป็น 3 ฝ่าย:
-  - **พลเมือง (Civilians)**: ได้รับ "คำลับ A" เช่น "ชานมไข่มุก"
-  - **สายลับ (Undercover)**: ได้รับ "คำลับ B" ที่ใกล้เคียงกันมาก เช่น "กาแฟเย็น"
-  - **มิสเตอร์ไวท์ (Mr. White)**: ไม่ได้รับคำใดๆ เลย (การ์ดว่างเปล่า/ความลับ)
-  ผู้เล่นจะผลัดกันบอกคำใบ้ 1 ประโยคโดยไม่พูดคำลับของตนเอง จากนั้นเปิดโหวตจับคนน่าสงสัย หาก Mr. White ถูกโหวตออกจะมีโอกาส 1 ครั้งในการทายคำของพลเมืองเพื่อชิงสิทธิ์ชนะทันที
-- **Target Audience & Context**: กลุ่มเพื่อนที่เล่นด้วยกันต่อหน้า (In-Person Party) หรือกลุ่มผู้เล่นที่เชื่อมต่อห้องผ่าน Master Server ออนไลน์
-- **Key Value**: ขยายขีดความสามารถของ TabletopNexus ให้มีเกมที่ 3 ที่เล่นได้จริง มีระบบเสียงบรรยากาศนักสืบ และเชื่อมโยง ELO เข้าสู่กระดาน Leaderboard เดียวกัน
+When a player taps **"เปิดโต๊ะใหม่ (Host)"**, the application currently triggers an async Firebase Firestore room creation call with only a standard button disabled state, causing a sudden snap directly into the lobby once the room document is written.
+
+This feature introduces a cinematic yet lightweight transition:
+1. **Interactive Tap Effect**: The "เปิดโต๊ะใหม่" button responds with a tactile scale-down and a subtle sparkle burst.
+2. **Magical Seal Loading Modal / Portal**: A centered, pulsing Arthurian seal with rotating pastel runes and a progress indicator that tracks room setup stages without any perceptible lag.
+3. **Smooth Zoom & Cascade Reveal**: As the Firestore snapshot synchronizes, the seal expands into a gentle light burst, and the Lobby cards (Room Header, Player Ratios, Role Setup) slide up and zoom into place with staggered Framer Motion spring physics.
 
 ---
 
 ## 2. User Experience & Visual Design
 
-### 2.1 Key User Flows
+### Key User Flows
 
 ```
-[คลังบอร์ดเกม (Catalog)] ──► [การ์ด Undercover (พร้อมป้ายเล่นได้จริง)]
-                                    │
-                                    ▼
-[Transition จอสีน้ำเงินเทานักสืบ (#0F172A / Indigo Stealth)]
-                                    │
-                                    ▼
-[UndercoverScreen: แท็บล็อบบี้ / สร้างห้อง / ค้นหารหัสห้อง 4 ตัว]
-                                    │
-  ┌─────────────────────────────────┴─────────────────────────────────┐
-  ▼                                                                   ▼
-[ห้องล็อบบี้ (Host / Player Seats)]                        [ตั้งค่ากติกาในห้อง]
-- รายชื่อผู้เล่น + ปุ่มดึงเพื่อน/บอทเสริม               - เปิด/ปิด Mr. White
-- ตรวจสอบความพร้อม                                         - เลือกหมวดคำไทย (อาหาร/สัตว์/สิ่งของ)
-                                                           - ปุ่ม "AI สร้างคำคู่สด (Gemini Flash)"
-                                    │
-                                    ▼ [เจ้าของห้องกดเริ่มเกม]
-[ขั้นตอนที่ 1: แจกบทบาท & เปิดการ์ดคำลับ (Secret Word Card Reveal)]
-- แตะค้างเพื่อแง้มดูคำลับ ป้องกันคนข้างๆ แอบมอง (Haptic/Card Flip)
-- พลเมืองเห็นคำ A, สายลับเห็นคำ B, Mr. White เห็นคำเตือน "คุณคือ Mr. White"
-                                    │
-                                    ▼
-[ขั้นตอนที่ 2: รอบการบอกคำใบ้ (Clue Round - Turn by Turn)]
-- แสดงลำดับเทิร์นชัดเจน (Turn Indicator) พร้อมนาฬิกานับถอยหลังและเสียงเตือน
-- ช่องพิมพ์คำใบ้ หรือกดปุ่ม "ส่งเทิร์น (พูดใบ้เสร็จแล้ว)"
-- กระดานบันทึกประวัติคำใบ้ของผู้เล่นทุกคนในแต่ละรอบ (Clue History Log)
-                                    │
-                                    ▼
-[ขั้นตอนที่ 3: รอบอภิปรายและลงคะแนน (Discussion & Elimination Vote)]
-- เปิดไมค์คุย/พิมพ์จับพิรุธ
-- แต่ละคนเลือกโหวตผู้เล่นที่น่าสงสัยที่สุด 1 คน
-- ประกาศผลผู้ถูกคัดออกและเปิดเผยบทบาทจริง
-                                    │
-  ┌─────────────────────────────────┴─────────────────────────────────┐
-  ▼ (หากเป็น Mr. White)                                              ▼ (หากไม่ใช่ Mr. White)
-[ช่วง Mr. White ทายคำลับ]                                    [ตรวจสอบเงื่อนไขชนะทันที]
-- ให้เวลา Mr. White พิมพ์ทายคำลับของพลเมือง                - พลเมืองกำจัด Undercover & White หมด = ชนะ
-- ถ้าทายถูก = Mr. White ชนะคนเดียวทันที!                   - Undercover เหลือเท่ากับพลเมือง = สายลับชนะ
-- ถ้าทายผิด = Mr. White ออกจากเกมและการแข่งขันดำเนินต่อรอบถัดไป
-                                    │
-                                    ▼
-[ขั้นตอนที่ 4: สรุปผลการแข่งขัน (Game Over & ELO Results)]
-- เปิดเผยคำคู่ลับทั้งสองคำ (Word A vs Word B)
-- สรุปรายชื่อผู้ชนะ + แจกแต้ม ELO Delta
-- ปุ่ม "เล่นใหม่อีกตา (Rematch)" เพื่อสับบทบาทและสุ่มคำคู่ใหม่ทันที
+[ Landing Form ]
+      │  (User clicks "เปิดโต๊ะใหม่ (Host)")
+      ▼
+[ Tap Feedback & Audio Chime ] ───▶ Play soft magical chime & button tactile press
+      │
+      ▼
+[ Pulsing Magical Seal Overlay ] ──▶ Centered Arthurian seal with soft emerald/amber pulse
+      │                              Progressive subtitle ("กำลังเปิดโต๊ะและสร้างรหัสผ่าน...")
+      │
+      ▼ (Firestore room doc created & subscribed)
+[ Smooth Zoom & Cascade Reveal ] ──▶ Seal smoothly scales up & fades
+      │                              ActiveRoomHeader slides in from top (-20px -> 0)
+      │                              Player Ratio card scales from 0.96 -> 1.0 with soft pastel aura
+      ▼
+[ Active Lobby State ]
 ```
 
-### 2.2 Visual Identity & Theme Tokens
+### Visual Identity & Theme
+- **Color Palette**: Light pastel emerald (`#10B981` at 10-20% opacity), warm golden amber (`#F59E0B`), soft off-white surfaces (`#FFFFFF` with `border-emerald-200/90`), and deep readable slate typography (`#0F172A`).
+- **Magical Seal**: Multi-layered SVG seal featuring the Round Table shield, crossed blades, and concentric orbital rings that slowly spin and pulse.
+- **Pastel Sparkles**: 8-12 floating micro-sparkles (`Sparkles` / star glyphs) rendered with staggered float animations in soft lavender, mint, and golden yellow hues.
 
-- **Aesthetic Direction**: *Noir Modern Detective* — เรียบหรู เงียบสงบ น่าค้นหา ไม่ใช้แสงนีออนแสบตา
-- **Color Palette (60-30-10 Rule)**:
-  - Canvas (60%): สีกรมท่าน้ำเงินเข้มลึกและเทาดำสนิท (`#090D16` / `#0F172A`)
-  - Structural Panels (30%): ผิวการ์ดโทนเทาน้ำเงินสุภาพ (`#1E293B` / `#334155`) พร้อมเส้นขอบคมกริบ (`border-slate-800`)
-  - Focal Accents (10%): สีส้มอำพันเรืองรอง (`#F59E0B`) สำหรับเวลานับถอยหลัง และสีครามเงียบขรึม (`#6366F1`) สำหรับบทบาทสายลับ
-- **Typography**:
-  - หัวเรื่อง & ชื่อเกม: `Plus Jakarta Sans` / `Outfit` น้ำหนัก Bold ดูลึกลับและมั่นคง
-  - เนื้อหา & คำใบ้: ฟอนต์ภาษาไทยมาตรฐานที่อ่านง่ายสบายตา (`Sarabun` / `Noto Sans Thai` fallback)
-  - ตัวเลขจับเวลา & ผลคะแนน: `tabular-nums` จัดระเบียบชิดแนวเดียวกันเสมอ
-- **Audio Feedback**: เสียงคลิกการ์ด, เสียงระฆังเริ่มเทิร์นใบ้คำ, เสียงนับถอยหลัง 5 วินาทีสุดท้าย และเสียงเปิดเผยบทบาท
+### Interactive Feedback & Motion
+- **Entrance Duration**: 350ms total transition time to ensure snappy responsiveness without impeding user flow.
+- **Spring Physics**: Settling curves (`type: "spring", stiffness: 380, damping: 28`) for a natural, tactile card entrance.
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-1. **สถาปัตยกรรมไฟล์แบบ Modular ตามรอย Cheese Thief & Insider**:
-   - สร้างโมดูลในระดับชั้นที่ชัดเจน:
-     - Data: `src/data/undercoverWords.ts` (คลังคำคู่ภาษาไทยแบ่ง 5 หมวดหลัก)
-     - Firebase Service: `src/firebase/table/undercoverService.ts` (State logic, deal roles, submit clue, advance turn, process vote, Mr. White guess)
-     - UI Views: `src/components/undercover/UndercoverScreen.tsx` และ `src/components/undercover/UndercoverPhases.tsx`
-     - Transition: ขยาย `GameSceneTransition.tsx` ให้มีตัวแปร `undercover`
-   - *เหตุผล*: ป้องกันโค้ดปะปน รักษามาตรฐานของโปรเจกต์ และสามารถตรวจสอบ TypeScript ได้ 100%
+- **Decision 1: Overlay vs Inline Morphing**
+  - *Chosen Approach*: Lightweight portal overlay that handles the brief async Firestore write (~300-600ms), followed by a cascading layout animation in `AvalonScreen.tsx`.
+  - *Why*: Avoids awkward DOM element reflows while the user's name and room metadata are being written to Firestore.
 
-2. **Server-Side Gemini 3.8 Flash Integration**:
-   - สร้าง Express Endpoint `/api/undercover/generate-words` ใน `server.ts`
-   - ใช้ `@google/genai` SDK ด้วยโมเดล `'gemini-3.8-flash'`
-   - *เหตุผล*: ป้องกัน API Key หลุดสู่ Client ตามมาตรฐานความปลอดภัย และตอบสนองต่อคำขอสร้างคำคู่ภาษาไทยเฉพาะทางได้อย่างรวดเร็ว
-
-3. **Hybrid Input for Clue Rounds**:
-   - ผู้เล่นสามารถพิมพ์ข้อความส่งลงกระดาน หรือกดปุ่ม "ข้ามเทิร์น (พูดใบ้ต่อหน้าเรียบร้อยแล้ว)" ได้
-   - *เหตุผล*: รองรับทั้งคนที่นั่งล้อมวงเปิดมือถือจอเดียว/หลายจอ และคนที่เล่นผ่านคอมพิวเตอร์ระยะไกล
+- **Decision 2: Performance & Mobile Optimization**
+  - *Chosen Approach*: Pure CSS/Framer Motion compositor properties (`transform: scale`, `opacity`, `filter`).
+  - *Why*: Ensures 60fps silky smooth rendering on all mobile phones without triggering layout recalculations or jank.
 
 ---
 
-## 4. Technical Architecture & Data Strategy
+## 4. Technical Architecture & Component Structure
 
-### 4.1 System Diagram
+### Component Flow
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        TabletopNexus Frontend                          │
-│                                                                        │
-│  [Navbar] ──► [GameCatalogGrid] ──► [GameSceneTransition ('undercover')] │
-│                                             │                          │
-│                                             ▼                          │
-│                       [UndercoverScreen.tsx]                           │
-│     ┌───────────────────────────────────────┴────────────────────┐     │
-│     ▼                                                            ▼     │
-│ [In-Game Lobby / Config]                            [UndercoverPhases] │
-│ - Host controls (Mr. White toggle, timer)           - RoleRevealStep   │
-│ - Word Category / AI Generate Button                - ClueRoundStep    │
-│                                                     - VoteStep         │
-│                                                     - MrWhiteGuessStep │
-│                                                     - ResultsStep      │
-└────────────────────────────────────┬───────────────────────────────────┘
-                                     │
-           ┌─────────────────────────┴─────────────────────────┐
-           ▼                                                   ▼
-┌───────────────────────────────┐           ┌────────────────────────────────────┐
-│      Firebase Firestore       │           │      Express Server (server.ts)    │
-│  rooms/{roomId}               │           │                                    │
-│  ├── players/{playerId}       │           │  POST /api/undercover/generate-    │
-│  │   - role: 'civilian' |     │           │       words                        │
-│  │           'undercover' |   │           │   ├── calls @google/genai          │
-│  │           'mr_white'       │           │   └── model: 'gemini-3.8-flash'    │
-│  │   - secretWord             │           │  WebSocket Presence & Chat         │
-│  │   - clueHistory: string[]  │           └────────────────────────────────────┘
-│  └── status: 'undercover_...' │
-└───────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│                   AvalonScreen.tsx                     │
+│  - isCreatingRoom state                                │
+│  - handleCreateRoom() wrapper                          │
+│                                                        │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │       AvalonCreationTransitionOverlay.tsx        │  │
+│  │  - Pulsing Magical Seal (Shield + Orbit Rings)    │  │
+│  │  - Progressive status text ticker                │  │
+│  │  - Floating pastel sparkle particles             │  │
+│  └──────────────────────────────────────────────────┘  │
+│                                                        │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │       AnimatePresence (Mode="wait")              │  │
+│  │  - Landing View  ──(Zoom Out / Fade)──▶          │  │
+│  │  - Lobby View    ──(Zoom In / Spring Cascade)──▶ │  │
+│  └──────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 Data Models & Room Schema Extension
-
-ใน `src/firebase/table/types.ts`:
-- **GamePhase เพิ่ม**: `'undercover_deal' | 'undercover_clue' | 'undercover_vote' | 'undercover_mrwhite_guess' | 'undercover_over'`
-- **PlayerRoleCard เพิ่ม**: `'undercover_civilian' | 'undercover_spy' | 'undercover_mrwhite'`
-- **FirestoreRoom ฟิลด์สำหรับ Undercover**:
-  - `undercoverCivilianWord?: string;`
-  - `undercoverSpyWord?: string;`
-  - `enableMrWhite?: boolean;`
-  - `undercoverCurrentTurnIndex?: number;`
-  - `undercoverRoundNumber?: number;`
-  - `undercoverTurnPlayerId?: string;`
-  - `undercoverEliminatedIds?: string[];`
-  - `mrWhiteGuessedWord?: string;`
-  - `mrWhiteGuessSuccess?: boolean;`
-- **FirestorePlayer ฟิลด์เพิ่มเติม**:
-  - `isEliminated?: boolean;`
-  - `currentRoundClue?: string;`
-  - `cluesSubmitted?: string[];`
-
----
-
-## 5. Verification & Testing Strategy
-
-- **Build & Compilation**: รัน `compile_applet` เพื่อยืนยันความถูกต้องของประเภทข้อมูล TypeScript ทุกโมดูล
-- **Lint Inspection**: รัน `lint_applet` เพื่อป้องกันตัวแปรตกหล่นหรือการ import ผิดพลาด
-- **Server Endpoint Verification**: ทดสอบเรียก API `/api/undercover/generate-words` เพื่อให้แน่ใจว่าโมเดล `gemini-3.8-flash` สร้างคำคู่ภาษาไทยที่มีความสัมพันธ์กันจริง
-- **Gameplay Simulation**: ทดสอบการสร้างห้อง เพิ่มบอท สุ่มบทบาท กระจายคำลับ ส่งคำใบ้ โหวตผู้เล่น และการทายคำของ Mr. White จนจบเกม
+### Planned File Changes (Turn 3 upon approval)
+1. **`src/components/avalon/AvalonCreationTransitionOverlay.tsx`** (New modular component, ~120 lines):
+   - Renders the pulsing Arthurian seal with soft glow aura and rotating runes.
+   - Displays gentle progressive text ("กำลังจัดเตรียมโต๊ะกลม...", "สลักรหัสห้อง 4 หลัก...").
+   - Floats lightweight pastel sparkles around the seal.
+2. **`src/components/avalon/AvalonScreen.tsx`** (Update ~30 lines):
+   - Wrap view switches in `AnimatePresence`.
+   - Trigger creation transition state and sound effect when "เปิดโต๊ะใหม่" is tapped.
+   - Add staggered spring entrance variants for the newly revealed lobby.

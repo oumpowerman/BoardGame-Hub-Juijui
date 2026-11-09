@@ -20,9 +20,13 @@ interface GameCatalogGridProps {
   realCheeseRoomsCount: number;
   realInsiderRoomsCount?: number;
   realUndercoverRoomsCount?: number;
+  realDetectiveClubRoomsCount?: number;
+  realAvalonRoomsCount?: number;
   onEnterCheeseThiefScreen: () => void;
   onEnterInsiderScreen?: () => void;
   onEnterUndercoverScreen?: () => void;
+  onEnterDetectiveClubScreen?: () => void;
+  onEnterAvalonScreen?: () => void;
   onOpenGameSubForum: (gameSlug: BoardGame['slug']) => void;
   onResetFilter: () => void;
 }
@@ -32,9 +36,13 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
   realCheeseRoomsCount,
   realInsiderRoomsCount = 0,
   realUndercoverRoomsCount = 0,
+  realDetectiveClubRoomsCount = 0,
+  realAvalonRoomsCount = 0,
   onEnterCheeseThiefScreen,
   onEnterInsiderScreen,
   onEnterUndercoverScreen,
+  onEnterDetectiveClubScreen,
+  onEnterAvalonScreen,
   onOpenGameSubForum,
   onResetFilter,
 }) => {
@@ -69,6 +77,8 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
         const isCheeseThief = game.slug === 'cheese-thief';
         const isInsider = game.slug === 'insider';
         const isUndercover = game.slug === 'undercover';
+        const isDetectiveClub = game.slug === 'detective-club';
+        const isAvalon = game.slug === 'avalon';
 
         return (
           <article
@@ -80,6 +90,10 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
                 ? 'border-2 border-rose-400 shadow-md ring-2 ring-rose-200/60'
                 : isUndercover
                 ? 'border-2 border-indigo-500 shadow-md ring-2 ring-indigo-200/60'
+                : isDetectiveClub
+                ? 'border-2 border-amber-600 shadow-md ring-2 ring-amber-300/60'
+                : isAvalon
+                ? 'border-2 border-emerald-600 shadow-md ring-2 ring-emerald-300/60'
                 : 'border border-rose-100/90 shadow-xs hover:shadow-md'
             }`}
           >
@@ -126,6 +140,18 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
                   </div>
                 )}
 
+                {isDetectiveClub && (
+                  <div className="absolute top-3 left-4 px-3 py-1 bg-amber-700 text-white text-xs font-extrabold rounded-xl shadow-xs">
+                    🔍 สมาคมนักสืบ · ดิจิทัล Companion คู่การ์ดภาพจริง
+                  </div>
+                )}
+
+                {isAvalon && (
+                  <div className="absolute top-3 left-4 px-3 py-1 bg-emerald-600 text-white text-xs font-extrabold rounded-xl shadow-xs">
+                    👑 Avalon · ดิจิทัล Companion ช่วยโหวตทีม & แอบส่องบทบาท
+                  </div>
+                )}
+
                 <div className="absolute bottom-3 left-5 right-5 flex items-end justify-between gap-4 text-white">
                   <div>
                     <p className="text-xs text-amber-200 font-semibold drop-shadow-xs">
@@ -169,6 +195,30 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
                       <span aria-hidden="true">·</span>
                       <span className="font-bold text-rose-700">
                         โต๊ะออนไลน์ขณะนี้: {realInsiderRoomsCount} ห้อง
+                      </span>
+                    </>
+                  )}
+                  {isUndercover && (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span className="font-bold text-violet-700">
+                        โต๊ะออนไลน์ขณะนี้: {realUndercoverRoomsCount} ห้อง
+                      </span>
+                    </>
+                  )}
+                  {isDetectiveClub && (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span className="font-bold text-amber-800">
+                        โต๊ะสืบคดีขณะนี้: {realDetectiveClubRoomsCount} ห้อง
+                      </span>
+                    </>
+                  )}
+                  {isAvalon && (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span className="font-bold text-emerald-700">
+                        โต๊ะอัศวินขณะนี้: {realAvalonRoomsCount} ห้อง
                       </span>
                     </>
                   )}
@@ -294,6 +344,26 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
                 >
                   <Play className="w-4 h-4 fill-current" />
                   <span>เข้าสู่โต๊ะเล่น Undercover</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : isDetectiveClub && onEnterDetectiveClubScreen ? (
+                <button
+                  type="button"
+                  onClick={onEnterDetectiveClubScreen}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-extrabold text-white bg-amber-700 hover:bg-amber-800 border border-amber-700 rounded-xl shadow-xs hover:scale-[1.01] active:scale-[0.98] transition-all whitespace-nowrap shrink-0 cursor-pointer min-h-[42px]"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  <span>เปิดสมุดสืบคดี Detective Club</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : isAvalon && onEnterAvalonScreen ? (
+                <button
+                  type="button"
+                  onClick={onEnterAvalonScreen}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-extrabold text-white bg-emerald-600 hover:bg-emerald-500 border border-emerald-600 rounded-xl shadow-xs hover:scale-[1.01] active:scale-[0.98] transition-all whitespace-nowrap shrink-0 cursor-pointer min-h-[42px]"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  <span>เปิดโต๊ะ Avalon Companion</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               ) : (

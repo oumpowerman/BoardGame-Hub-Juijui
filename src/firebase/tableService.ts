@@ -17,3 +17,5 @@ export * from './table/roomLifecycleService';
 export * from './table/cheeseThiefService';
 export * from './table/insiderService';
 export * from './table/undercoverService';
+export * from './table/detectiveClubService';
+export * from './table/avalonService';

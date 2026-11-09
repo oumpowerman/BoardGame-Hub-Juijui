@@ -9,7 +9,14 @@ export interface GameCategory {
 
 export interface BoardGame {
   id: string;
-  slug: 'cheese-thief' | 'insider' | 'undercover' | 'avalon' | 'werewolf-night' | 'catan-frontier';
+  slug:
+    | 'cheese-thief'
+    | 'insider'
+    | 'undercover'
+    | 'detective-club'
+    | 'avalon'
+    | 'werewolf-night'
+    | 'catan-frontier';
   titleTh: string;
   titleEn: string;
   categoryId: Exclude<GameCategoryId, 'all'>;
