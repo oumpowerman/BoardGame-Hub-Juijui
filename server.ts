@@ -357,13 +357,28 @@ async function startServer() {
     res.status(201).json(message);
   });
 
+  const geminiApiKey =
+    process.env.GEMINI_API_KEY ||
+    process.env.gemini_api_key ||
+    process.env.VITE_GEMINI_API_KEY ||
+    '';
+
   const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
+    apiKey: geminiApiKey,
     httpOptions: {
       headers: {
         'User-Agent': 'aistudio-build',
       },
     },
+  });
+
+  // Health / Key Diagnostic endpoint
+  app.get('/api/ai/status', (_req, res) => {
+    res.json({
+      hasKey: Boolean(geminiApiKey && geminiApiKey.trim().length > 0),
+      keyLength: geminiApiKey ? geminiApiKey.length : 0,
+      prefix: geminiApiKey ? geminiApiKey.slice(0, 6) + '...' : 'none',
+    });
   });
 
   app.post('/api/undercover/generate-words', async (req, res) => {
@@ -403,13 +418,18 @@ async function startServer() {
           categoryLabel: parsed.categoryLabel || 'AI เจเนอเรต (Gemini Flash)',
           hint: parsed.hint || 'คู่คำสร้างสรรค์โดย Gemini Flash',
           category: 'all',
+          isAiGenerated: true,
         });
       }
       throw new Error('Incomplete JSON');
     } catch (err) {
       console.error('Failed to generate Undercover words with Gemini:', err);
       const fallback = getRandomUndercoverWordPair();
-      return res.json(fallback);
+      return res.json({
+        ...fallback,
+        isAiGenerated: false,
+        errorDetail: err instanceof Error ? err.message : String(err),
+      });
     }
   });
 
@@ -444,6 +464,7 @@ async function startServer() {
           word: parsed.word,
           categoryLabel: parsed.categoryLabel || 'AI เจเนอเรต (Gemini Flash)',
           hint: parsed.hint || '',
+          isAiGenerated: true,
         });
       }
       throw new Error('Incomplete JSON');
@@ -454,6 +475,8 @@ async function startServer() {
         word: fallback.word,
         categoryLabel: fallback.categoryLabel,
         hint: '',
+        isAiGenerated: false,
+        errorDetail: err instanceof Error ? err.message : String(err),
       });
     }
   });

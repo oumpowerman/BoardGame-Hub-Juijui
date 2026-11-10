@@ -462,11 +462,21 @@ export const UndercoverScreen: React.FC<UndercoverScreenProps> = ({
         }),
       });
       if (!res.ok) throw new Error('API server returned error');
-      const data = (await res.json()) as UndercoverWordPair;
+      const data = (await res.json()) as UndercoverWordPair & {
+        isAiGenerated?: boolean;
+        errorDetail?: string;
+      };
       setAiGeneratedPair(data);
       await setUndercoverWordPair(currentRoom.id, data);
       if (soundEnabled) tableAudio.playMorningGong();
-      showToast('สร้างคำคู่ภาษาไทยสดด้วย Gemini เรียบร้อยแล้ว!');
+
+      if (data.isAiGenerated === false) {
+        setErrorMessage(
+          'ไม่พบ API Key หรือการเชื่อมต่อ Gemini ล่าช้า: สลับไปใช้คู่คำคลังระบบแทน'
+        );
+      } else {
+        showToast('สร้างคำคู่ภาษาไทยสดด้วย Gemini เรียบร้อยแล้ว!');
+      }
     } catch {
       setErrorMessage(
         'การเชื่อมต่อ Gemini ล่าช้า สลับไปใช้คู่คำเริ่มต้นจากระบบแทน'
