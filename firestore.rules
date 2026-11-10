@@ -71,7 +71,7 @@ service cloud.firestore {
       return data.roomCode is string &&
              data.roomCode.size() == 4 &&
              data.roomCode.matches('^[0-9]{4}$') &&
-             data.gameId in ['cheese-thief', 'insider', 'undercover', 'detective-club', 'avalon'] &&
+             data.gameId in ['cheese-thief', 'insider', 'undercover', 'detective-club', 'avalon', 'hues-cues'] &&
              data.hostId is string &&
              data.hostId.size() <= 128 &&
              data.status in [
@@ -103,7 +103,13 @@ service cloud.firestore {
                'avalon_quest_result',
                'avalon_assassination',
                'avalon_scoring',
-               'avalon_game_over'
+               'avalon_game_over',
+               'hc_clue_1',
+               'hc_guess_1',
+               'hc_clue_2',
+               'hc_guess_2',
+               'hc_scoring',
+               'hc_game_over'
              ];
     }
 

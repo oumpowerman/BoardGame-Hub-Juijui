@@ -160,6 +160,26 @@ const HUB_THEMES: Record<
     friendRow: 'bg-emerald-950/40 border-emerald-800/60',
     addFriendBtn: 'bg-emerald-600 hover:bg-emerald-500 text-white font-bold',
   },
+  'hues-cues': {
+    heroCard:
+      'bg-gradient-to-br from-pink-50 via-white to-amber-50 border-pink-300/80',
+    heroIconBg: 'bg-pink-500 text-white shadow-2xs',
+    badge: 'bg-pink-100/90 text-pink-950 border-pink-300/80',
+    primaryBtn: 'bg-pink-600 hover:bg-pink-700 text-white shadow-2xs',
+    dividerLine: 'bg-pink-200/70',
+    inputBorder: 'border-pink-400/80',
+    inputIcon: 'text-pink-600',
+    joinBtn: 'bg-pink-600 hover:bg-pink-700 text-white',
+    tableCardBorder: 'border-pink-300/70',
+    tableHeaderBorder: 'border-pink-200',
+    emptyBox: 'bg-pink-50/40 border-pink-200',
+    divideLine: 'divide-pink-100/80',
+    rowHover: 'hover:bg-pink-50/50',
+    roomCodeBadge: 'bg-pink-600 text-white font-black',
+    enterTableBtn: 'bg-pink-100 hover:bg-pink-200 text-pink-950 font-bold',
+    friendRow: 'bg-pink-50/40 border-pink-200/70',
+    addFriendBtn: 'bg-pink-600 hover:bg-pink-700 text-white font-bold',
+  },
 };
 
 export const GameHubScreen: React.FC<GameHubScreenProps> = ({

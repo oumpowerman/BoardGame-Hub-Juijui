@@ -28,6 +28,7 @@ import { InsiderScreen } from './components/insider/InsiderScreen';
 import { UndercoverScreen } from './components/undercover/UndercoverScreen';
 import { DetectiveClubScreen } from './components/detectiveclub/DetectiveClubScreen';
 import { AvalonScreen } from './components/avalon/AvalonScreen';
+import { HuesCuesScreen } from './components/huescues/HuesCuesScreen';
 import {
   GameSceneTransition,
   TransitionGameVariant,
@@ -106,6 +107,15 @@ export default function App() {
     testFirestoreConnection();
     const restoreSession = async () => {
       try {
+        const urlParams =
+          typeof window !== 'undefined'
+            ? new URLSearchParams(window.location.search)
+            : null;
+        const isIpadBoardScan =
+          urlParams?.get('game') === 'hues-cues' &&
+          urlParams?.get('mode') === 'board' &&
+          Boolean(urlParams?.get('room'));
+
         const isLoggedFlag =
           typeof window !== 'undefined' &&
           localStorage.getItem('tabletop_account_logged_in') === '1';
@@ -114,7 +124,21 @@ export default function App() {
           const profile = await getUserProfile(uid);
           if (profile) {
             setCurrentUser(profile);
+            return;
           }
+        }
+
+        if (isIpadBoardScan) {
+          const uid = getClientUid();
+          const nowIso = new Date().toISOString();
+          setCurrentUser({
+            uid,
+            accountName: 'iPad Central Board',
+            friendCode: 'IPAD00',
+            friends: [],
+            createdAt: nowIso,
+            updatedAt: nowIso,
+          });
         }
       } catch {
         // Require fresh login
@@ -267,6 +291,12 @@ export default function App() {
             winRate: 0,
           },
           'catan-frontier': {
+            elo: entry.overallElo,
+            matches: 0,
+            wins: 0,
+            winRate: 0,
+          },
+          'hues-cues': {
             elo: entry.overallElo,
             matches: 0,
             wins: 0,
@@ -490,6 +520,29 @@ export default function App() {
     }, 620);
   };
 
+  // Enter Hues and Cues Screen with Vibrant Pink Color Transition
+  const handleEnterHuesCuesScreen = (roomCode?: string) => {
+    if (transitionTimerRef.current) {
+      window.clearTimeout(transitionTimerRef.current);
+    }
+    setInitialRoomCode(roomCode || '');
+    setSceneTransition({
+      isVisible: true,
+      direction: 'enter',
+      gameVariant: 'hues-cues',
+      roomCode,
+    });
+
+    window.setTimeout(() => {
+      setActiveSection('hues-cues-screen');
+      window.scrollTo(0, 0);
+    }, 260);
+
+    transitionTimerRef.current = window.setTimeout(() => {
+      setSceneTransition((prev) => ({ ...prev, isVisible: false }));
+    }, 620);
+  };
+
   // Check URL query parameters (?room=... or ?code=...) to auto-join friends
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -509,6 +562,8 @@ export default function App() {
           handleEnterUndercoverScreen(targetRoom);
         } else if (gameParam === 'insider') {
           handleEnterInsiderScreen(targetRoom);
+        } else if (gameParam === 'hues-cues') {
+          handleEnterHuesCuesScreen(targetRoom);
         } else {
           handleEnterCheeseThiefScreen(targetRoom);
         }
@@ -590,6 +645,9 @@ export default function App() {
   const realAvalonRooms = firestoreRooms.filter(
     (r) => r.gameId === 'avalon'
   );
+  const realHuesCuesRooms = firestoreRooms.filter(
+    (r) => r.gameId === 'hues-cues'
+  );
 
   const currentUserEntry: PlayerRankingEntry =
     leaderboard.find((e) => e.id === currentUser.uid) || {
@@ -612,6 +670,7 @@ export default function App() {
         avalon: { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         'werewolf-night': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         'catan-frontier': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
+        'hues-cues': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
       },
     };
 
@@ -769,6 +828,22 @@ export default function App() {
           onOpenFriendModal={() => setIsFriendModalOpen(true)}
           initialRoomCode={initialRoomCode}
         />
+      ) : activeSection === 'hues-cues-screen' ? (
+        <HuesCuesScreen
+          currentUser={currentUser}
+          onBackToCatalog={() => setActiveSection('catalog')}
+          initialRoomId={initialRoomCode}
+          rooms={firestoreRooms}
+          friends={friends}
+          roomInvites={roomInvites}
+          onOpenFriendModal={() => setIsFriendModalOpen(true)}
+          onInviteFriendToRoom={async (room, friend) => {
+            await sendRoomInviteToFriend(room, currentUser, friend.uid);
+            showLiveNotification(
+              `ส่งคำเชิญห้อง #${room.roomCode} ให้ "${friend.accountName}" แล้ว`
+            );
+          }}
+        />
       ) : (
         <>
           {/* Top Bar */}
@@ -785,6 +860,8 @@ export default function App() {
             handleEnterDetectiveClubScreen();
           } else if (sec === 'avalon-screen') {
             handleEnterAvalonScreen();
+          } else if (sec === 'hues-cues-screen') {
+            handleEnterHuesCuesScreen();
           } else {
             setActiveSection(sec);
           }
@@ -794,6 +871,7 @@ export default function App() {
         onEnterUndercoverScreen={() => handleEnterUndercoverScreen()}
         onEnterDetectiveClubScreen={() => handleEnterDetectiveClubScreen()}
         onEnterAvalonScreen={() => handleEnterAvalonScreen()}
+        onEnterHuesCuesScreen={() => handleEnterHuesCuesScreen()}
         onOpenFriendModal={() => setIsFriendModalOpen(true)}
         onSignOut={handleSignOut}
         currentUser={currentUser}
@@ -804,6 +882,7 @@ export default function App() {
         liveUndercoverRoomsCount={realUndercoverRooms.length}
         liveDetectiveClubRoomsCount={realDetectiveClubRooms.length}
         liveAvalonRoomsCount={realAvalonRooms.length}
+        liveHuesCuesRoomsCount={realHuesCuesRooms.length}
       />
 
       {/* Live Notification Toast */}
@@ -851,11 +930,13 @@ export default function App() {
                   realUndercoverRoomsCount={realUndercoverRooms.length}
                   realDetectiveClubRoomsCount={realDetectiveClubRooms.length}
                   realAvalonRoomsCount={realAvalonRooms.length}
+                  realHuesCuesRoomsCount={realHuesCuesRooms.length}
                   onEnterCheeseThiefScreen={() => handleEnterCheeseThiefScreen()}
                   onEnterInsiderScreen={() => handleEnterInsiderScreen()}
                   onEnterUndercoverScreen={() => handleEnterUndercoverScreen()}
                   onEnterDetectiveClubScreen={() => handleEnterDetectiveClubScreen()}
                   onEnterAvalonScreen={() => handleEnterAvalonScreen()}
+                  onEnterHuesCuesScreen={() => handleEnterHuesCuesScreen()}
                   onOpenGameSubForum={handleOpenGameSubForum}
                   onResetFilter={() => {
                     setSelectedCategory('all');
@@ -895,6 +976,8 @@ export default function App() {
                     handleEnterDetectiveClubScreen();
                   } else if (gameSlug === 'avalon') {
                     handleEnterAvalonScreen();
+                  } else if (gameSlug === 'hues-cues') {
+                    handleEnterHuesCuesScreen();
                   } else {
                     handleEnterCheeseThiefScreen();
                   }

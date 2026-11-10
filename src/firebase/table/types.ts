@@ -31,7 +31,15 @@ export type GamePhase =
   | 'avalon_quest_vote'
   | 'avalon_quest_result'
   | 'avalon_assassination'
-  | 'avalon_scoring';
+  | 'avalon_scoring'
+  | 'avalon_game_over'
+  // Hues and Cues phases
+  | 'hc_clue_1'
+  | 'hc_guess_1'
+  | 'hc_clue_2'
+  | 'hc_guess_2'
+  | 'hc_scoring'
+  | 'hc_game_over';
 
 export type PlayerRoleCard =
   | 'cheese_thief'
@@ -56,7 +64,10 @@ export type PlayerRoleCard =
   | 'avalon_morgana'
   | 'avalon_mordred'
   | 'avalon_oberon'
-  | 'avalon_minion';
+  | 'avalon_minion'
+  // Hues and Cues roles
+  | 'hc_clue_giver'
+  | 'hc_guesser';
 
 export interface UndercoverClueEntry {
   round: number;
@@ -74,11 +85,21 @@ export interface AvalonQuestResult {
   passed: boolean;
 }
 
+export interface HuesCuesGuessEntry {
+  uid: string;
+  playerName: string;
+  avatarUrl?: string;
+  tileId: string;
+  roundStep: 1 | 2;
+  updatedBy?: 'phone' | 'ipad';
+  updatedAt: string;
+}
+
 export interface FirestoreRoom {
   id: string;
   roomCode: string;
   roomName?: string;
-  gameId: 'cheese-thief' | 'insider' | 'undercover' | 'detective-club' | 'avalon';
+  gameId: 'cheese-thief' | 'insider' | 'undercover' | 'detective-club' | 'avalon' | 'hues-cues';
   hostId: string;
   hostName: string;
   status: GamePhase;
@@ -164,6 +185,19 @@ export interface FirestoreRoom {
   avalonEvilWinsCount?: number;
   avalonAssassinationTargetId?: string;
   avalonAssassinationSuccess?: boolean;
+  // Hues and Cues Specific Fields
+  hcIpadConnected?: boolean;
+  hcIpadLastSeen?: string;
+  hcRoundNumber?: number;
+  hcClueGiverId?: string;
+  hcClueGiverName?: string;
+  hcSecretTileId?: string;
+  hcCandidateTileIds?: string[];
+  hcClue1?: string;
+  hcClue2?: string;
+  hcGuesses?: Record<string, HuesCuesGuessEntry>;
+  hcScores?: Record<string, number>;
+  hcRoundScores?: Record<string, number>;
   winnerTeam:
     | 'mice'
     | 'thief'
@@ -218,6 +252,9 @@ export interface FirestorePlayer {
   // Avalon Specific Fields
   avalonTeamVoteChoice?: 'approve' | 'reject' | '';
   avalonQuestVoteChoice?: 'success' | 'fail' | '';
+  // Hues and Cues Specific Fields
+  hcSelectedTileId?: string;
+  hcTotalScore?: number;
   joinedAt: string;
 }
 

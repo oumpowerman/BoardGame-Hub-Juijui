@@ -1,61 +1,35 @@
-# Cheese Thief UX & Animated Cheese Status Plan
+# Implementation Plan - Hues and Cues Phone Companion Mode
 
-ระบบปรับปรุงประสบการณ์การเล่น **จอมโจรขโมยชีส (Cheese Thief)** เพื่อแก้ปัญหาปุ่มกดซ้ำซ้อนบนหน้าจอ และเพิ่ม **แท่นวางชีสจำลองพร้อมอนิเมชั่นสุดน่ารัก** ให้ผู้เล่นที่ลืมตาขึ้นมาในแต่ละชั่วโมงมองแวบเดียวก็รู้ทันทีว่าก้อนชีสยังอยู่หรือถูกขโมยไปแล้ว
+## Problem & Need
+The user clarified that on personal phones, the large 480-color tile board (`"กระดานเลือกสีของคุณ"`) is unnecessary and distracting. Players sit together around a central iPad board; therefore, phones should act as a clean **Companion Controller**:
+- Remove the huge 480-color spectrum grid from the phone view.
+- Players look at the central iPad board to view all 480 colors and real-time player tokens.
+- On the phone, players only need:
+  1. Coordinate pickers: Column (`A`–`T`) and Row (`1`–`24`) dropdowns.
+  2. 4-way arrow buttons (`▲` `▼` `◄` `►`) to nudge their token 1 tile at a time while looking at the iPad.
+  3. Visual feedback: a single color swatch showing their selected tile coordinate, color, and sync status with the iPad.
+  4. Clear, friendly prompt reminding players to look up at the central iPad screen.
+  5. The iPad mode remains the full 480-tile interactive board with draggable tokens and bullseye scoring target.
 
----
+## User Review Required
+> [!NOTE]
+> When `isIpadBoardView` is active (the central iPad screen), it continues to render the full 480-color interactive board with drag-and-drop player tokens. When viewed as a normal player on a phone, it renders the streamlined Companion Controller instead of duplicate 480 tiles.
 
-## User Review & Critical Decisions
+## Proposed Changes
 
-> [!IMPORTANT]
-> แผนงานฉบับปรับปรุงตามความต้องการล่าสุดของคุณ:
-> 1. **ยุบรวมปุ่มซ้ำซ้อนให้เหลือปุ่มเดียว (`จำบทบาทแล้ว → ไปทอยเต๋าในถ้วย`):** แก้ปัญหาที่มีทั้งปุ่มในการ์ด (`RoleDealStep`) และปุ่มแถบล่าง (`MobilePhaseActionBar`) โผล่ซ้อนกัน 2 ปุ่ม ให้เหลือปุ่มหลักปุ่มเดียวที่ชัดเจน
-> 2. **เพิ่มการ์ดแสดงสถานะก้อนชีสกลางโต๊ะพร้อมอนิเมชั่นแยกสถานะชัดเจน:**
->    - **สถานะที่ 1 — ชีสยังอยู่ปลอดภัย (`🧀 ชีสก้อนทองยังวางอยู่กลางโต๊ะ!`):** ไอคอนชีสก้อนโตลอยดึ๋งๆ (Bouncy Floating Animation) พร้อมประกายวิบวับบนจานรองสีเขียวมิ้นต์/เหลืองพาสเทล
->    - **สถานะที่ 2 — กำลังถูกขโมยในชั่วโมงนี้ (`🐾 จอมโจรกำลังเอื้อมมือขโมยชีส!`):** อนิเมชั่นก้อนชีสสั่นไหวพร้อมอุ้งเท้าหนูค่อยๆ ตะครุบก้อนชีส
->    - **สถานะที่ 3 — ชีสถูกขโมยหายไปแล้ว (`🚨 ชีสหายไปแล้ว! เหลือแต่จานว่างเปล่า`):** อนิเมชั่น **ก้อนชีสโปร่งแสงกระพริบถี่ๆ (Blinking Ghost Cheese Outline)** สลับกับรอยเท้าหนูและเศษชีสบนจานว่างสีชมพูโรสพาสเทล มองปุ๊บรู้ปั๊บว่าโดนขโมยไปแล้วก่อนหน้านี้!
+### 1. `src/components/huescues/HuesCuesCentralBoard.tsx`
+- Split the component cleanly between:
+  - **iPad Board Mode (`isIpadMode = true`)**: The full 480-tile spectrum grid, player token dock, drag-and-drop targets, reveal bullseye & 3x3 scoring rings.
+  - **Phone Mode (`isIpadMode = false`)**: A streamlined mobile controller card with:
+    - Current selected color preview & coordinate indicator (e.g. `K12`).
+    - Prominent Column (`A`–`T`) and Row (`1`–`24`) coordinate selectors.
+    - Large, responsive directional buttons (`▲ ▼ ◄ ►`) to nudge position easily while looking at the iPad.
+    - Tablet guidance card: *"มองกระดานสีบน iPad กลางโต๊ะ แล้วเลือกพิกัดหรือกดปุ่มลูกศรเพื่อขยับหมากของคุณ"*
+    - If the user is the Clue Giver, show guidance to look at the iPad while thinking of a clue.
 
----
+### 2. `src/components/huescues/HuesCuesScreen.tsx`
+- Adjust responsive layout grid: on phone mode, the companion controller and clue controls stack naturally in a compact, scroll-free mobile view. On iPad mode, the board takes the full screen width.
 
-## 1. Overview & Core Concept
-
-- **What It Does**:
-  1. ขจัดปุ่มกดซ้ำ 2 ปุ่มในสเต็ปดูบทบาทและสเต็ปอื่นๆ ของเกมหนูขโมยชีส ให้เหลือปุ่มกดหลักเพียงจุดเดียว (`จำบทบาทแล้ว → ไปทอยเต๋าในถ้วย`)
-  2. สร้างวิดเจ็ต **Animated Cheese Table Pedestal (แท่นก้อนชีสกลางโต๊ะ)** ขนาดใหญ่สีสันสดใสน่ารักสำหรับผู้เล่นที่ลืมตาตื่นขึ้นมาในแต่ละชั่วโมง (`1:00–6:00 น.`)
-- **Target Audience / Persona**: ผู้เล่นบอร์ดเกมจอมโจรขโมยชีสที่ต้องการดูสถานะบนหน้าจอมือถืออย่างรวดเร็วภายในเวลาไม่กี่วินาทีที่ลืมตาตื่น
-- **Key Value**: ไม่สับสนกับปุ่มซ้อนกัน 2 ปุ่ม และไม่ต้องเพ่งอ่านตัวหนังสือเล็กๆ ว่าชีสยังอยู่หรือหายไปแล้ว เพราะมองจากอนิเมชั่นชีสลอยดึ๋งๆ vs ชีสกระพริบได้ทันที
-
----
-
-## 2. User Experience & Visual Design
-
-- **1. ปุ่มเดียวชัดเจนในหน้าแจกบทบาท (STEP 2)**:
-  - รวมปุ่มยืนยันให้เหลือปุ่มเดียวข้อความ **`จำบทบาทแล้ว → ไปทอยเต๋าในถ้วย`** และนำปุ่มซ้ำซ้อนในแถบล่าง (`MobilePhaseActionBar`) ออกเพื่อไม่ให้มี 2 ปุ่มแข่งกันบนหน้าจอ
-- **2. อนิเมชั่นแท่นวางชีสกลางโต๊ะ (STEP 4 — ช่วงลืมตาตื่นกลางคืน)**:
-  - **เมื่อชีสยังอยู่ (`currentHour < stolenHour` หรือยังไม่ถูกหยิบ):**
-    - แสดงก้อนชีส 🧀 ขนาดใหญ่ **ลอยขึ้น-ลงดึ๋งๆ อย่างนุ่มนวล (`y: [0, -8, 0]`, `scale: [1, 1.06, 1]`)** พร้อมดาววิบวับ `✨` และป้ายกำกับสีเขียวมิ้นต์ **"🧀 ชีสยังวางอยู่ปลอดภัยดี!"**
-  - **เมื่อจอมโจรกำลังขโมยในชั่วโมงนี้ (`currentHour === stolenHour`):**
-    - แสดงก้อนชีสสั่นดุ๊กดิ๊กพร้อมรอยเท้าหนู 🐾 และป้ายสีส้มทอง **"⚡ จอมโจรกำลังขโมยชีสในชั่วโมงนี้!"**
-  - **เมื่อชีสถูกขโมยไปแล้ว (`currentHour > stolenHour`):**
-    - แสดงก้อนชีสเงาจางๆ **กระพริบเตือน (`opacity: [0.2, 0.85, 0.2]`)** อยู่เหนือจานว่างเปล่า พร้อมรอยเท้าหนูวิ่งหนี 🐾💨 และป้ายสีชมพูโรส **"🚨 ชีสถูกขโมยหายไปแล้ว! (เหลือแต่จานว่าง)"**
-
----
-
-## 3. Technical Architecture & Data Strategy
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                     InPersonPhases                       │
-├────────────────────────────┬─────────────────────────────┤
-│       RoleDealStep         │      NightTimelineStep      │
-│ (Single Unified CTA Button │  ┌───────────────────────┐  │
-│  "จำบทบาทแล้ว → ไปทอยเต๋า   │  │ AnimatedCheeseStatus  │  │
-│   ในถ้วย" — No Duplicate   │  │ - Safe: Bouncy Float  │  │
-│   Mobile Sticky Button)    │  │ - Stolen: Blinking    │  │
-│                            │  │   Ghost Cheese + Paws │  │
-│                            │  └───────────────────────┘  │
-└────────────────────────────┴─────────────────────────────┘
-```
-
-- **Interactive Component Mapping**:
-  - Update `RoleDealStep.tsx` & `InPersonPhases.tsx`: ปรับข้อความปุ่มเป็น `จำบทบาทแล้ว → ไปทอยเต๋าในถ้วย` และตัดปุ่มซ้ำจาก `MobilePhaseActionBar` ออก
-  - Update `NightTimelineStep.tsx`: แทนที่ข้อความสถานะชีสบรรทัดเล็กๆ ด้านล่างด้วยวิดเจ็ต **Animated Cheese Status Card** ขนาดใหญ่พร้อมอนิเมชั่น `motion.div` แยกตามสถานะชีส (ลอยดึ๋งๆ vs กระพริบ)
+## Verification Plan
+- Run `compile_applet` and `lint_applet` to ensure zero compilation or TypeScript errors.
+- Test both phone companion mode and iPad board view transitions.

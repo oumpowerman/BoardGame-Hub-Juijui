@@ -15,6 +15,7 @@ export interface BoardGame {
     | 'undercover'
     | 'detective-club'
     | 'avalon'
+    | 'hues-cues'
     | 'werewolf-night'
     | 'catan-frontier';
   titleTh: string;

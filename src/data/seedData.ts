@@ -347,6 +347,44 @@ export const BOARD_GAMES: BoardGame[] = [
       },
     ],
   },
+  {
+    id: 'game-hues-cues',
+    slug: 'hues-cues',
+    titleTh: 'ทายสีจากคำใบ้ (Hues and Cues)',
+    titleEn: 'Hues and Cues Official Rules',
+    categoryId: 'party',
+    categoryLabel: 'ปาร์ตี้ & เล่นจบไว',
+    minPlayers: 3,
+    maxPlayers: 10,
+    durationMinutes: 20,
+    difficulty: 'ง่าย',
+    masterServerSupported: true,
+    playableOnline: true,
+    activeRoomsCount: 0,
+    onlinePlayersCount: 0,
+    forumThreadsCount: 0,
+    coverImage: '/src/assets/images/game_hues_cues_1794295237258.jpg',
+    shortSummary:
+      'วาง iPad เป็นแผ่นกระดานสีกลาง 480 ช่องบนโต๊ะ ผู้ให้คำใบ้บอกคำใบ้สั้น ๆ เพื่อน ๆ ทายสีโดยลากวางตัวหมากชื่อตัวเองลงบนกระดาน ยิ่งใกล้เป้าหมายยิ่งได้คะแนนสูง!',
+    rulesOverview: [
+      'เริ่มรอบ: ผู้ให้คำใบ้รับสีเป้าหมายลับและคิดคำใบ้ 1–2 คำใบ้',
+      'ให้คำใบ้: ผู้ให้คำใบ้ประกาศคำใบ้ให้ทุกคนในโต๊ะทราบ',
+      'ทายสี: ผู้เล่นทุกคนแตะหรือลากวางตัวหมากชื่อตัวเองบนกระดานสีกลาง (iPad)',
+      'ให้คะแนน: เปิดเผยตำแหน่งสีเป้าหมาย ผู้เล่นที่วางหมากใกล้ที่สุดรับคะแนนสะสม',
+    ],
+    rolesList: [
+      {
+        name: 'Clue Giver (ผู้ให้คำใบ้)',
+        faction: 'neutral',
+        ability: 'รับสีเป้าหมายลับและใบ้คำสั้น ๆ เพื่อนำทางเพื่อน ๆ ให้ทายสีได้แม่นยำที่สุด',
+      },
+      {
+        name: 'Guesser (นักทายสี)',
+        faction: 'neutral',
+        ability: 'วิเคราะห์คำใบ้และวางตัวหมากบนกระดานสีกลาง 480 ช่องเพื่อทำคะแนน',
+      },
+    ],
+  },
 ];
 
 export const INITIAL_MASTER_ROOMS: MasterServerRoom[] = [];

@@ -20,7 +20,8 @@ export type TransitionGameVariant =
   | 'insider'
   | 'undercover'
   | 'detective-club'
-  | 'avalon';
+  | 'avalon'
+  | 'hues-cues';
 
 export type SceneTransitionMode =
   | 'enter'
@@ -151,6 +152,24 @@ const PASTEL_PALETTES: Record<TransitionGameVariant, PastelPalette> = {
     emoji: '⚔️',
     gameNameTh: 'Avalon: ศึกอัศวินโต๊ะกลม',
     tagLabel: 'THE RESISTANCE: AVALON · KNIGHTS COMPANION',
+  },
+  'hues-cues': {
+    backdrop: 'bg-gradient-to-br from-pink-100/95 via-[#FFFDFB]/95 to-amber-100/95',
+    cardBorder: 'border-pink-400',
+    cardShadow: 'shadow-pink-300/60',
+    emblemBg: 'bg-gradient-to-tr from-pink-300 via-amber-200 to-yellow-100',
+    emblemBorder: 'border-pink-500',
+    badgeBg: 'bg-pink-100/90',
+    badgeBorder: 'border-pink-300',
+    badgeText: 'text-pink-950',
+    accentIconText: 'text-pink-800',
+    progressTrack: 'bg-pink-100/90 border-pink-300',
+    progressFill: 'bg-gradient-to-r from-pink-500 via-amber-400 to-yellow-400',
+    buttonBg: 'bg-pink-600 hover:bg-pink-700',
+    buttonText: 'text-white font-black',
+    emoji: '🎨',
+    gameNameTh: 'ทายสีจากคำใบ้ (Hues and Cues)',
+    tagLabel: 'HUES AND CUES · COLOR CLUE PARTY',
   },
 };
 

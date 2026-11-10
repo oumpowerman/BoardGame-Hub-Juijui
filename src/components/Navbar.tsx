@@ -19,6 +19,7 @@ export type ActiveSection =
   | 'undercover-screen'
   | 'detective-club-screen'
   | 'avalon-screen'
+  | 'hues-cues-screen'
   | 'sub-forums'
   | 'leaderboard'
   | 'architecture';
@@ -31,6 +32,7 @@ interface NavbarProps {
   onEnterUndercoverScreen?: () => void;
   onEnterDetectiveClubScreen?: () => void;
   onEnterAvalonScreen?: () => void;
+  onEnterHuesCuesScreen?: () => void;
   onOpenFriendModal: () => void;
   onSignOut: () => void;
   currentUser: UserProfile;
@@ -41,6 +43,7 @@ interface NavbarProps {
   liveUndercoverRoomsCount?: number;
   liveDetectiveClubRoomsCount?: number;
   liveAvalonRoomsCount?: number;
+  liveHuesCuesRoomsCount?: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -51,6 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onEnterUndercoverScreen,
   onEnterDetectiveClubScreen,
   onEnterAvalonScreen,
+  onEnterHuesCuesScreen,
   onOpenFriendModal,
   onSignOut,
   currentUser,
@@ -61,6 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   liveUndercoverRoomsCount = 0,
   liveDetectiveClubRoomsCount = 0,
   liveAvalonRoomsCount = 0,
+  liveHuesCuesRoomsCount = 0,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -70,14 +75,16 @@ export const Navbar: React.FC<NavbarProps> = ({
     liveInsiderRoomsCount +
     liveUndercoverRoomsCount +
     liveDetectiveClubRoomsCount +
-    liveAvalonRoomsCount;
+    liveAvalonRoomsCount +
+    liveHuesCuesRoomsCount;
 
   const isCurrentGameActive =
     activeSection === 'cheese-thief-screen' ||
     activeSection === 'insider-screen' ||
     activeSection === 'undercover-screen' ||
     activeSection === 'detective-club-screen' ||
-    activeSection === 'avalon-screen';
+    activeSection === 'avalon-screen' ||
+    activeSection === 'hues-cues-screen';
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -101,7 +108,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, [isDropdownOpen]);
 
   const handleSelectGame = (
-    type: 'cheese-thief' | 'insider' | 'undercover' | 'detective-club' | 'avalon'
+    type: 'cheese-thief' | 'insider' | 'undercover' | 'detective-club' | 'avalon' | 'hues-cues'
   ) => {
     setIsDropdownOpen(false);
     if (type === 'cheese-thief') {
@@ -114,11 +121,14 @@ export const Navbar: React.FC<NavbarProps> = ({
       onEnterDetectiveClubScreen();
     } else if (type === 'avalon' && onEnterAvalonScreen) {
       onEnterAvalonScreen();
+    } else if (type === 'hues-cues' && onEnterHuesCuesScreen) {
+      onEnterHuesCuesScreen();
     }
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full max-w-full bg-white/95 backdrop-blur-md border-b border-rose-100/80 shadow-xs">
+    <>
+      <header className="sticky top-0 z-30 w-full max-w-full bg-white/95 backdrop-blur-md border-b border-rose-100/80 shadow-xs">
       <div className="max-w-[1280px] mx-auto flex items-center justify-between gap-2 sm:gap-6 px-3 sm:px-6 py-2.5 sm:py-3">
         {/* Zone 1: Brand Wordmark */}
         <a
@@ -348,6 +358,33 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {liveAvalonRoomsCount} ห้อง
                     </span>
                   </button>
+
+                  {/* Game 6: Hues and Cues */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectGame('hues-cues')}
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-pink-50/80 transition-colors flex items-center justify-between gap-3 group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="w-9 h-9 rounded-xl bg-pink-500 text-white flex items-center justify-center font-bold text-base shadow-2xs shrink-0 group-hover:scale-105 transition-transform">
+                        🎨
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-xs font-extrabold text-slate-900 truncate flex items-center gap-1.5">
+                          <span>ทายสีจากคำใบ้ (Hues & Cues)</span>
+                          <span className="text-[10px] text-pink-700 font-mono font-bold">
+                            (3–10 คน)
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate">
+                          ใช้ iPad เป็นกระดานสีกลาง & ลากหมากทายสี
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-pink-100 text-pink-900 border border-pink-200 shrink-0">
+                      {liveHuesCuesRoomsCount || 0} ห้อง
+                    </span>
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -500,8 +537,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span>ตารางอันดับ</span>
         </button>
       </nav>
+      </header>
 
-      {/* Mobile Popover Modal when triggered from mobile bar */}
+      {/* Mobile Popover Modal when triggered from mobile bar (Rendered at Root Viewport Level) */}
       <AnimatePresence>
         {isDropdownOpen && (
           <div className="md:hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-xs p-3">
@@ -628,10 +666,31 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {liveAvalonRoomsCount} ห้อง
                 </span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectGame('hues-cues')}
+                className="w-full text-left p-3 rounded-2xl bg-pink-50/60 border border-pink-200/80 flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🎨</span>
+                  <div>
+                    <div className="text-xs font-black text-slate-900">
+                      ทายสีจากคำใบ้ (Hues & Cues)
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      3–10 คน · iPad กระดานกลาง & ลากหมากทาย
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-lg bg-pink-500 text-white">
+                  {liveHuesCuesRoomsCount || 0} ห้อง
+                </span>
+              </button>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-    </header>
+    </>
   );
 };

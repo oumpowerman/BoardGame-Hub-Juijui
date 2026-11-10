@@ -19,3 +19,4 @@ export * from './table/insiderService';
 export * from './table/undercoverService';
 export * from './table/detectiveClubService';
 export * from './table/avalonService';
+export * from './table/huesCuesService';

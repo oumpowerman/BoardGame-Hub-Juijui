@@ -112,7 +112,7 @@
         },
         "gameId": {
           "type": "string",
-          "enum": ["cheese-thief", "insider", "undercover", "detective-club", "avalon"],
+          "enum": ["cheese-thief", "insider", "undercover", "detective-club", "avalon", "hues-cues"],
           "description": "Game type selected for this tabletop room"
         },
         "hostId": {
@@ -155,7 +155,13 @@
             "avalon_quest_result",
             "avalon_assassination",
             "avalon_scoring",
-            "avalon_game_over"
+            "avalon_game_over",
+            "hc_clue_1",
+            "hc_guess_1",
+            "hc_clue_2",
+            "hc_guess_2",
+            "hc_scoring",
+            "hc_game_over"
           ],
           "description": "Current lifecycle phase of the board game"
         },
