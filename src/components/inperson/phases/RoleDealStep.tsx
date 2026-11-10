@@ -97,28 +97,28 @@ export const RoleDealStep: React.FC<RoleDealStepProps> = ({
         )}
       </div>
 
-      {/* Confirm Acknowledged Button -> Advance to Step 3 */}
+      {/* Unified Confirm Role & Advance to Dice Roll Button */}
       <div>
         <button
           type="button"
           disabled={myPlayer?.roleAcknowledged}
           onClick={onAcknowledgeRole}
-          className={`w-full py-3.5 px-5 rounded-2xl font-bold text-sm shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 min-h-[48px] ${
+          className={`w-full py-3.5 px-5 rounded-2xl font-black text-sm shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2 min-h-[50px] ${
             myPlayer?.roleAcknowledged
               ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-              : 'bg-amber-400 hover:bg-amber-300 text-amber-950'
+              : 'bg-amber-400 hover:bg-amber-300 text-amber-950 active:scale-98'
           }`}
         >
           <CheckCircle2 className="w-4 h-4" />
           <span>
             {myPlayer?.roleAcknowledged
-              ? 'ดูการ์ดเรียบร้อยแล้ว (กำลังรอเพื่อนร่วมโต๊ะ)'
-              : 'จำบทบาทได้แล้ว → ไปสเต็ป 3: ทอยเต๋าในถ้วยครอบเต๋า'}
+              ? 'จำบทบาทแล้ว (กำลังรอเพื่อนร่วมโต๊ะ...)'
+              : 'จำบทบาทแล้ว → ไปทอยเต๋าในถ้วย'}
           </span>
           {!myPlayer?.roleAcknowledged && <ChevronRight className="w-4 h-4" />}
         </button>
         <div className="text-xs text-slate-500 font-mono pt-2">
-          แอบดูการ์ดแล้ว {players.filter((p) => p.roleAcknowledged).length}/
+          พร้อมไปทอยเต๋าแล้ว {players.filter((p) => p.roleAcknowledged).length}/
           {players.length} คน
         </div>
       </div>

@@ -19,7 +19,9 @@ import {
   listenToRoomPlayers,
   startDetectiveClubGame,
   submitDetectiveClubSecretWord,
+  confirmDetectiveClubCardPlaced,
   advanceDetectiveClubCardRound,
+  advanceDetectiveClubSpeaker,
   startDetectiveClubVoting,
   submitDetectiveClubVote,
   rematchDetectiveClubGame,
@@ -43,6 +45,7 @@ import { DetectiveClubInvitesBanner } from './DetectiveClubInvitesBanner';
 import { DetectiveClubLobby } from './DetectiveClubLobby';
 import { DetectiveClubPhases } from './DetectiveClubPhases';
 import { useDetectiveClubGameMaster } from './useDetectiveClubGameMaster';
+import { thaiGameMaster } from '../../utils/thaiGameMasterTTS';
 
 export interface DetectiveClubScreenProps {
   currentUser: UserProfile;
@@ -372,7 +375,7 @@ export const DetectiveClubScreen: React.FC<DetectiveClubScreenProps> = ({
     setErrorMessage(null);
 
     await runStartGameTransition(activeRoom.roomCode, async () => {
-      await startDetectiveClubGame(activeRoom.id);
+      await startDetectiveClubGame(activeRoom.id, discussionDurationSeconds);
     });
 
     setIsLoading(false);
@@ -394,6 +397,18 @@ export const DetectiveClubScreen: React.FC<DetectiveClubScreenProps> = ({
     }
   };
 
+  const handleConfirmCardPlaced = async (playerId: string) => {
+    if (!activeRoom) return;
+    setIsLoading(true);
+    try {
+      await confirmDetectiveClubCardPlaced(activeRoom.id, playerId);
+    } catch (err) {
+      console.error('Error confirming card placed:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleAdvanceCardRound = async (target: 2 | 'discussion') => {
     if (!activeRoom) return;
     setIsLoading(true);
@@ -403,6 +418,15 @@ export const DetectiveClubScreen: React.FC<DetectiveClubScreenProps> = ({
       console.error('Error advancing card round:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAdvanceSpeaker = async (nextSpeakerIndex: number) => {
+    if (!activeRoom) return;
+    try {
+      await advanceDetectiveClubSpeaker(activeRoom.id, nextSpeakerIndex);
+    } catch (err) {
+      console.error('Error advancing speaker:', err);
     }
   };
 
@@ -542,7 +566,12 @@ export const DetectiveClubScreen: React.FC<DetectiveClubScreenProps> = ({
                 hostName={activeRoom.hostName}
                 isHost={isHost}
                 soundEnabled={soundEnabled}
-                onToggleSound={() => setSoundEnabled((prev) => !prev)}
+                onToggleSound={() => {
+                  const next = !soundEnabled;
+                  setSoundEnabled(next);
+                  thaiGameMaster.setEnabled(next);
+                }}
+                onTestVoice={() => thaiGameMaster.testDetectiveVoice()}
                 onOpenShareModal={() => setIsShareModalOpen(true)}
                 onLeaveRoom={handleLeaveOrCloseRoom}
               />
@@ -589,7 +618,9 @@ export const DetectiveClubScreen: React.FC<DetectiveClubScreenProps> = ({
                       discussionSecondsLeft={discussionSecondsLeft}
                       isLoading={isLoading}
                       onSubmitSecretWord={handleSubmitSecretWord}
+                      onConfirmCardPlaced={handleConfirmCardPlaced}
                       onAdvanceCardRound={handleAdvanceCardRound}
+                      onAdvanceSpeaker={handleAdvanceSpeaker}
                       onStartVoting={handleStartVoting}
                       onSubmitVote={handleSubmitVote}
                       onRematch={handleRematch}

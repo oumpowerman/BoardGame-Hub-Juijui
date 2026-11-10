@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Edit3,
+  Camera,
+  QrCode,
 } from 'lucide-react';
 import { BaseModal } from '../BaseModal';
 import {
@@ -20,7 +22,10 @@ import {
   sendFriendRequest,
   respondToFriendRequest,
   registerOrUpdateUserProfile,
+  updateUserAvatar,
 } from '../../firebase/userService';
+import { AvatarPickerModal } from '../profile/AvatarPickerModal';
+import { FriendQrScannerModal } from './FriendQrScannerModal';
 
 interface FriendManagerModalProps {
   isOpen: boolean;
@@ -55,6 +60,22 @@ export const FriendManagerModal: React.FC<FriendManagerModalProps> = ({
   // Account Name Edit State
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
   const [newNameInput, setNewNameInput] = useState<string>(currentUser.accountName);
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState<boolean>(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(false);
+
+  const handleSaveAvatar = async (avatarUrl: string) => {
+    try {
+      const updated = await updateUserAvatar(currentUser.uid, avatarUrl);
+      if (updated) {
+        onProfileUpdated(updated);
+        setStatusMessage('อัปเดตรูปโปรไฟล์ของคุณเรียบร้อยแล้ว!');
+      }
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : 'ไม่สามารถบันทึกรูปโปรไฟล์ได้'
+      );
+    }
+  };
 
   const handleCopyMyCode = () => {
     navigator.clipboard.writeText(currentUser.friendCode);
@@ -150,74 +171,117 @@ export const FriendManagerModal: React.FC<FriendManagerModalProps> = ({
       <div className="space-y-5">
         {/* My Account Card */}
         <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="space-y-1">
-            <div className="text-xs text-slate-500 font-semibold">
-              ข้อมูลบัญชีของคุณ (ส่งให้เพื่อนค้นหา):
+          <div className="flex items-center gap-3">
+            {/* Avatar with Camera badge */}
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsAvatarModalOpen(true)}
+                className="w-14 h-14 rounded-full border-2 border-amber-300 shadow-2xs overflow-hidden bg-amber-100 flex items-center justify-center cursor-pointer group hover:opacity-90 transition-opacity"
+                title="คลิกเพื่อเปลี่ยนรูปถ่ายหรืออวตาร"
+              >
+                {currentUser.avatarUrl ? (
+                  <img
+                    src={currentUser.avatarUrl}
+                    alt={currentUser.accountName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-base font-black text-amber-900">
+                    {currentUser.accountName.slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAvatarModalOpen(true)}
+                className="absolute -bottom-1 -right-1 p-1.5 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-full border border-white shadow-2xs cursor-pointer"
+                title="เปลี่ยนรูปถ่ายหรืออวตาร"
+              >
+                <Camera className="w-3 h-3" />
+              </button>
             </div>
-            {isEditingName ? (
-              <form onSubmit={handleSaveAccountName} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newNameInput}
-                  onChange={(e) => setNewNameInput(e.target.value)}
-                  maxLength={40}
-                  className="px-3 py-1.5 bg-white border border-amber-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 bg-amber-400 text-amber-950 text-xs font-bold rounded-xl cursor-pointer"
-                >
-                  บันทึก
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsEditingName(false)}
-                  className="px-2 py-1.5 text-xs text-slate-500 cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-              </form>
-            ) : (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-base font-extrabold text-slate-900">
-                  {currentUser.accountName}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNewNameInput(currentUser.accountName);
-                    setIsEditingName(true);
-                  }}
-                  className="inline-flex items-center gap-1 text-xs text-amber-800 hover:underline cursor-pointer"
-                >
-                  <Edit3 className="w-3 h-3" />
-                  <span>เปลี่ยนชื่อ</span>
-                </button>
+
+            <div className="space-y-0.5">
+              <div className="text-[11px] text-slate-500 font-semibold">
+                ข้อมูลบัญชีของคุณ (แตะรูปเพื่อเปลี่ยน):
               </div>
-            )}
-            <div className="text-xs font-mono text-slate-600">
-              รหัสเพื่อน: <strong className="text-amber-900">{currentUser.friendCode}</strong> · UID:{' '}
-              <span className="text-slate-500">{currentUser.uid}</span>
+              {isEditingName ? (
+                <form onSubmit={handleSaveAccountName} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newNameInput}
+                    onChange={(e) => setNewNameInput(e.target.value)}
+                    maxLength={40}
+                    className="px-3 py-1.5 bg-white border border-amber-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 bg-amber-400 text-amber-950 text-xs font-bold rounded-xl cursor-pointer"
+                  >
+                    บันทึก
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingName(false)}
+                    className="px-2 py-1.5 text-xs text-slate-500 cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
+                </form>
+              ) : (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-base font-extrabold text-slate-900">
+                    {currentUser.accountName}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewNameInput(currentUser.accountName);
+                      setIsEditingName(true);
+                    }}
+                    className="inline-flex items-center gap-1 text-xs text-amber-800 hover:underline cursor-pointer"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    <span>เปลี่ยนชื่อ</span>
+                  </button>
+                </div>
+              )}
+              <div className="text-xs font-mono text-slate-600">
+                รหัสเพื่อน: <strong className="text-amber-900">{currentUser.friendCode}</strong> · UID:{' '}
+                <span className="text-slate-500">{currentUser.uid}</span>
+              </div>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleCopyMyCode}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-amber-100 border border-amber-300 rounded-xl text-xs font-bold text-amber-950 transition-colors cursor-pointer shrink-0 min-h-[40px]"
-          >
-            {copiedCode ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-emerald-700">คัดลอกรหัสแล้ว!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5 text-amber-700" />
-                <span>คัดลอกรหัส {currentUser.friendCode}</span>
-              </>
-            )}
-          </button>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsQrModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-extrabold transition-all shadow-2xs cursor-pointer shrink-0 min-h-[40px]"
+            >
+              <QrCode className="w-4 h-4" />
+              <span>QR Code / สแกนเพื่อน</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyMyCode}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-amber-100 border border-amber-300 rounded-xl text-xs font-bold text-amber-950 transition-colors cursor-pointer shrink-0 min-h-[40px]"
+            >
+              {copiedCode ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-emerald-700">คัดลอกรหัสแล้ว!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 text-amber-700" />
+                  <span>คัดลอกรหัส {currentUser.friendCode}</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Status / Error Alerts */}
@@ -375,14 +439,27 @@ export const FriendManagerModal: React.FC<FriendManagerModalProps> = ({
               {friends.map((friend) => (
                 <div
                   key={friend.uid}
-                  className="p-3 bg-emerald-50/40 border border-emerald-200/80 rounded-xl flex items-center justify-between gap-2"
+                  className="p-3 bg-emerald-50/40 border border-emerald-200/80 rounded-xl flex items-center justify-between gap-2.5"
                 >
-                  <div className="min-w-0">
-                    <div className="text-sm font-bold text-slate-900 truncate">
-                      {friend.accountName}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center font-bold text-emerald-900 text-xs shrink-0 overflow-hidden shadow-2xs">
+                      {friend.avatarUrl ? (
+                        <img
+                          src={friend.avatarUrl}
+                          alt={friend.accountName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        friend.accountName.slice(0, 2).toUpperCase()
+                      )}
                     </div>
-                    <div className="text-[11px] font-mono text-slate-500">
-                      #{friend.friendCode}
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold text-slate-900 truncate">
+                        {friend.accountName}
+                      </div>
+                      <div className="text-[11px] font-mono text-slate-500">
+                        #{friend.friendCode}
+                      </div>
                     </div>
                   </div>
 
@@ -411,6 +488,27 @@ export const FriendManagerModal: React.FC<FriendManagerModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Avatar Picker Modal */}
+      <AvatarPickerModal
+        isOpen={isAvatarModalOpen}
+        onClose={() => setIsAvatarModalOpen(false)}
+        currentAvatarUrl={currentUser.avatarUrl}
+        userName={currentUser.accountName}
+        onSaveAvatar={handleSaveAvatar}
+      />
+
+      {/* QR Code & Scanner Modal */}
+      <FriendQrScannerModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        currentUser={currentUser}
+        onFriendAddedSuccess={(addedFriend) => {
+          setStatusMessage(
+            `เพิ่ม "${addedFriend.accountName}" เป็นเพื่อนเรียบร้อยแล้ว!`
+          );
+        }}
+      />
     </BaseModal>
   );
 };

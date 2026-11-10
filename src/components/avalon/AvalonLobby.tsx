@@ -20,6 +20,10 @@ import { AVALON_QUEST_MATRIX, AVALON_ROLES_META } from '../../data/avalonRules';
 import { AvalonSettingsPayload } from '../../firebase/table/avalonService';
 import { AvalonRoleDetailModal } from './AvalonRoleDetailModal';
 import { AvalonRoleIcon } from './AvalonRoleIcon';
+import {
+  SameRoomQuickFriendBar,
+  SeatQuickAddFriendButton,
+} from '../friends/SameRoomQuickFriendBar';
 
 export interface AvalonLobbyProps {
   currentRoom: FirestoreRoom;
@@ -527,6 +531,13 @@ export const AvalonLobby: React.FC<AvalonLobbyProps> = ({
         </AnimatePresence>
       </div>
 
+      {/* Same-Room 1-Click Add Friends Strip */}
+      <SameRoomQuickFriendBar
+        players={players}
+        currentUid={currentUid}
+        friends={[]}
+      />
+
       {/* 4. Seated Players Grid & Bot Controls */}
       <div className="p-5 sm:p-6 bg-white border border-emerald-200 rounded-3xl space-y-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-100 pb-3">
@@ -591,8 +602,12 @@ export const AvalonLobby: React.FC<AvalonLobbyProps> = ({
                       {isPBot && <Bot className="w-3.5 h-3.5 text-slate-500 shrink-0" />}
                       <span className="truncate">{p.name}</span>
                     </div>
-                    <div className="text-[11px] text-slate-500">
-                      {isPHost ? 'หัวหน้าโต๊ะ' : isPBot ? 'บอทซ้อมมือ' : 'ผู้เล่นพร้อม'}
+                    <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                      <span>{isPHost ? 'หัวหน้าโต๊ะ' : isPBot ? 'บอทซ้อมมือ' : 'ผู้เล่นพร้อม'}</span>
+                      <SeatQuickAddFriendButton
+                        seatPlayer={p}
+                        currentUid={currentUid}
+                      />
                     </div>
                   </div>
 

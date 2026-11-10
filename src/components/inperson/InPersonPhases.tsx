@@ -8,7 +8,6 @@ import { NightTimelineStep } from './phases/NightTimelineStep';
 import { FollowerStep } from './phases/FollowerStep';
 import { MorningVoteStep } from './phases/MorningVoteStep';
 import { GameOverVerdictStep } from './phases/GameOverVerdictStep';
-import { MobilePhaseActionBar } from './phases/MobilePhaseActionBar';
 
 export interface InPersonPhasesProps {
   currentRoom: FirestoreRoom;
@@ -134,7 +133,7 @@ export const InPersonPhases: React.FC<InPersonPhasesProps> = ({
   );
 
   return (
-    <div className="space-y-5 pb-28 md:pb-6">
+    <div className="space-y-5 pb-6">
       {/* 6-Step Progress Bar */}
       <div className="grid grid-cols-6 gap-1.5 p-2 bg-white/90 border border-amber-200/80 rounded-2xl">
         {STEP_LIST.map((item) => {
@@ -252,29 +251,6 @@ export const InPersonPhases: React.FC<InPersonPhasesProps> = ({
           />
         )}
       </AnimatePresence>
-
-      {/* MOBILE STICKY BOTTOM ACTION BAR */}
-      <MobilePhaseActionBar
-        currentRoom={currentRoom}
-        myPlayer={myPlayer}
-        totalPlayers={totalPlayers}
-        isFourPlayerDualDice={isFourPlayerDualDice}
-        rollingDice={rollingDice}
-        rolledDicePair={rolledDicePair}
-        hourSecondsLeft={hourSecondsLeft}
-        selectedFollowerTargets={selectedFollowerTargets}
-        selectedVoteTarget={selectedVoteTarget}
-        isLoading={isLoading}
-        onAcknowledgeRole={onAcknowledgeRole}
-        onRollDiceInCup={onRollDiceInCup}
-        onConfirmDiceCupChoice={onConfirmDiceCupChoice}
-        onGrabCheese={onGrabCheese}
-        onAdvanceNightHour={onAdvanceNightHour}
-        onSelectFollowers={onSelectFollowers}
-        onConfirmFollowerPhase={onConfirmFollowerPhase}
-        onCastVote={onCastVote}
-        onPlayAgain={onPlayAgain}
-      />
     </div>
   );
 };

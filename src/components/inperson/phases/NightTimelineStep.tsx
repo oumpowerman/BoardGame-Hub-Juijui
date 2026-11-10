@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Moon,
   Clock,
@@ -11,6 +11,11 @@ import {
   Play,
   FastForward,
   SlidersHorizontal,
+  Volume2,
+  Sparkles,
+  Eye,
+  EyeOff,
+  UserCheck,
 } from 'lucide-react';
 import { FirestoreRoom, FirestorePlayer } from '../../../firebase/tableService';
 import { HOUR_THAI_NAMES } from './phaseUtils';
@@ -56,170 +61,364 @@ export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
   const isHost = currentRoom.hostId === currentUid;
   const currentDuration = currentRoom.cheeseNightDuration || 10;
   const isNightPaused = Boolean(currentRoom.cheeseNightPaused);
+  const currentHour = currentRoom.nightHour || 1;
+  const hourName = HOUR_THAI_NAMES[currentHour] || `ตี ${currentHour}`;
+  const isSleepWindow = hourSecondsLeft <= Math.max(2, Math.min(4, Math.floor(currentDuration / 2)));
+
+  // Helper to render avatar with fallback
+  const renderPlayerAvatar = (player: FirestorePlayer, sizeClass = 'w-10 h-10') => {
+    if (player.avatarUrl) {
+      return (
+        <img
+          src={player.avatarUrl}
+          alt={player.name}
+          className={`${sizeClass} rounded-full object-cover border-2 border-white shadow-2xs shrink-0`}
+        />
+      );
+    }
+    return (
+      <div
+        className={`${sizeClass} rounded-full bg-amber-200 border-2 border-amber-300 flex items-center justify-center font-bold text-amber-900 text-xs shrink-0 shadow-2xs`}
+      >
+        {player.name.slice(0, 2).toUpperCase()}
+      </div>
+    );
+  };
 
   return (
     <motion.div
-      key={`phase-night-${currentRoom.nightHour}`}
+      key={`phase-night-${currentHour}`}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
       transition={{ duration: 0.22, ease: 'easeOut' }}
-      className="space-y-5 text-center"
+      className="space-y-4 text-center max-w-2xl mx-auto"
     >
-      <div className="space-y-1.5">
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <span className="px-3 py-1 bg-indigo-100 text-indigo-900 rounded-full text-xs font-bold inline-flex items-center gap-1.5">
+      {/* Top Header Badge & Countdown Bar */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900 bg-indigo-100/90 px-3 py-1 rounded-full shadow-2xs">
             <Moon className="w-3.5 h-3.5 text-indigo-600" />
-            <span>STEP 4: Moderator ขานเวลากลางคืน (ตี 1 ถึง ตี 6 นาฬิกา)</span>
-          </span>
-          <span className={`px-3 py-1 rounded-full text-xs font-mono font-extrabold inline-flex items-center gap-1 border transition-all ${
-            isNightPaused
-              ? 'bg-amber-100 text-amber-950 border-amber-400 ring-2 ring-amber-300'
-              : 'bg-amber-100 text-amber-950 border-amber-300'
-          }`}>
-            <Clock className="w-3.5 h-3.5 text-amber-700" />
+            <span>ช่วงกลางคืน · ตี 1 ถึง ตี 6</span>
+          </div>
+
+          <div
+            className={`px-3 py-1 rounded-full text-xs font-mono font-black inline-flex items-center gap-1.5 border transition-all shadow-2xs ${
+              isNightPaused
+                ? 'bg-amber-100 text-amber-950 border-amber-400 ring-2 ring-amber-300'
+                : isSleepWindow
+                ? 'bg-rose-100 text-rose-950 border-rose-300 animate-pulse'
+                : 'bg-emerald-100 text-emerald-950 border-emerald-300'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
             <span>
               {isNightPaused
-                ? `⏸️ หยุดชั่วคราวที่: ${hourSecondsLeft} วิ (จาก ${currentDuration}s)`
-                : `นับถอยหลังชั่วโมงนี้: ${hourSecondsLeft} / ${currentDuration} วิ`}
+                ? `⏸️ หยุดเวลา: ${hourSecondsLeft}s`
+                : isSleepWindow
+                ? `💤 ช่วงใกล้หลับตา: ${hourSecondsLeft}s`
+                : `⏱️ ตี ${currentHour}: เหลือ ${hourSecondsLeft}s`}
             </span>
-          </span>
+          </div>
         </div>
 
-        <div className="text-3xl font-black text-indigo-950 font-mono tracking-tight pt-1">
-          🔊 &ldquo;ขณะนี้เวลา ตี {currentRoom.nightHour}:00 นาฬิกา!&rdquo;
+        {/* Progress Bar of Current Hour */}
+        <div className="w-full h-2 bg-indigo-100 rounded-full overflow-hidden relative">
+          <div
+            style={{
+              width: `${Math.min(100, Math.max(0, (hourSecondsLeft / currentDuration) * 100))}%`,
+            }}
+            className={`h-full transition-all duration-500 ${
+              isNightPaused
+                ? 'bg-amber-500'
+                : isSleepWindow
+                ? 'bg-gradient-to-r from-rose-400 to-amber-500'
+                : 'bg-gradient-to-r from-emerald-400 via-amber-400 to-amber-500'
+            }`}
+          />
         </div>
-        <div className="text-sm font-extrabold text-amber-900 bg-amber-100/80 px-3 py-1 rounded-xl inline-block">
+      </div>
+
+      {/* Hourly Timeline Tracker (1 to 6 AM) */}
+      <div className="p-2 bg-white/95 border border-amber-200/80 rounded-2xl grid grid-cols-6 gap-1 shadow-2xs text-xs font-mono font-bold">
+        {[1, 2, 3, 4, 5, 6].map((hour) => {
+          const isCurrent = hour === currentHour;
+          const isPast = hour < currentHour;
+          const isMyWake =
+            hour === myWakeHour ||
+            (isFourPlayerDualDice && myPlayer?.role === 'cheese_thief' && hour === mySecondHour);
+
+          return (
+            <div
+              key={hour}
+              className={`py-2 px-1 rounded-xl flex flex-col items-center justify-center transition-all ${
+                isCurrent
+                  ? 'bg-amber-400 text-amber-950 font-black scale-105 shadow-xs ring-2 ring-amber-300'
+                  : isPast
+                  ? 'bg-slate-100 text-slate-400 line-through'
+                  : 'bg-amber-50/50 text-amber-900/60'
+              }`}
+            >
+              <span className="text-[11px] sm:text-xs">ตี {hour}</span>
+              {isMyWake && (
+                <span className="text-[9px] font-sans font-black text-rose-600 bg-rose-50 px-1 rounded-sm mt-0.5">
+                  ตื่น
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Sound / GM Broadcast Pill */}
+      <div className="flex items-center justify-center gap-2 text-xs font-extrabold px-3 py-1.5 rounded-2xl bg-amber-100/70 border border-amber-300/80 text-amber-950 shadow-2xs">
+        <Volume2 className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+        <span>
           {isNightPaused
-            ? '⏸️ พักหยุดเวลาไว้ชั่วคราว เพื่อให้ผู้เล่นจัดเตรียมความพร้อม'
-            : hourSecondsLeft > 3
-            ? `📢 หนูตี${
-                HOUR_THAI_NAMES[currentRoom.nightHour] || currentRoom.nightHour
-              } ลืมตา... ตรวจดูรอบตัวหรือส่องถ้วยเต๋า`
-            : `💤 หนูตี${
-                HOUR_THAI_NAMES[currentRoom.nightHour] || currentRoom.nightHour
-              } หลับตา`}
-        </div>
-        <div className="text-xs text-slate-500 font-medium">
-          เวลาตื่นของคุณคือ{' '}
-          <strong className="text-amber-800">
-            ตี {myWakeHour}:00 น.
-            {isFourPlayerDualDice &&
-            myPlayer?.role === 'cheese_thief' &&
-            mySecondHour
-              ? ` และ ตี ${mySecondHour}:00 น.`
-              : ''}
-          </strong>
-        </div>
+            ? '⏸️ หัวหน้าโต๊ะหยุดเวลาชั่วคราว ทุกคนหลับตารอฟังสัญญาณ'
+            : isSleepWindow
+            ? `💤 สัญญาณเสียง: "หนู${hourName} หลับตา"`
+            : `🔔 สัญญาณเสียง: "หนู${hourName} ลืมตา... ตรวจดูรอบตัวหรือส่องถ้วยเต๋า"`}
+        </span>
       </div>
 
-      {/* Moderator Progress Bar with Pause Indicator */}
-      <div className="w-full h-2 bg-indigo-100 rounded-full overflow-hidden relative">
-        <div
-          style={{ width: `${Math.min(100, Math.max(0, (hourSecondsLeft / currentDuration) * 100))}%` }}
-          className={`h-full transition-all duration-700 ${
-            isNightPaused
-              ? 'bg-amber-500 animate-pulse'
-              : 'bg-gradient-to-r from-amber-400 to-rose-400'
-          }`}
-        />
-      </div>
-
-      {/* Paused Alert Pill */}
-      {isNightPaused && (
-        <div className="p-3 bg-amber-50 border border-amber-300 text-amber-950 font-bold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-2xs">
-          <Pause className="w-4 h-4 text-amber-700 shrink-0" />
-          <span>หัวหน้าโต๊ะกำลังหยุดเวลาชั่วคราว (ทุกคนหยุดรอนิ่งๆ และหลับตาตามกติกา)</span>
-        </div>
-      )}
-
-      {/* Dynamic State: Awake vs Sleeping */}
-      <div
-        className={`p-6 sm:p-7 rounded-3xl border-2 transition-all min-h-[230px] flex flex-col items-center justify-center space-y-4 ${
-          isMyHour
-            ? 'bg-amber-100/95 border-amber-400 text-amber-950 shadow-xl'
-            : 'bg-slate-900 text-slate-100 border-slate-800 shadow-inner'
-        }`}
-      >
+      {/* HIGH-CONTRAST FULL-CARD STATE: SLEEPING VS AWAKE */}
+      <AnimatePresence mode="wait">
         {isMyHour ? (
-          <div className="space-y-4 w-full max-w-lg mx-auto">
-            <div className="space-y-1">
-              <span className="text-4xl block">👀</span>
-              <div className="text-xl font-black text-amber-950">
-                ถึงชั่วโมงตื่นของคุณแล้ว! (ตี {currentRoom.nightHour}:00 น.)
+          /* ========================================================= */
+          /* AWAKE STATE: Radiant Gold Sunrise with Large Tactile Action */
+          /* ========================================================= */
+          <motion.div
+            key="awake-state"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            className="p-5 sm:p-7 rounded-3xl border-3 border-amber-400 bg-gradient-to-b from-amber-50 via-amber-100/90 to-yellow-100 text-amber-950 shadow-xl space-y-4 text-center relative overflow-hidden"
+          >
+            {/* Ambient Awake Glow */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-amber-300/30 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="space-y-1 relative">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400 text-amber-950 font-black text-xs rounded-full shadow-2xs uppercase tracking-wide">
+                <Sparkles className="w-3.5 h-3.5 text-amber-900" />
+                <span>ถึงชั่วโมงของคุณแล้ว!</span>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-amber-950 tracking-tight pt-1">
+                👀 ลืมตาเดี๋ยวนี้! (ตี {currentHour}:00 น.)
+              </div>
+              <div className="text-xs text-amber-800 font-bold">
+                บทบาทของคุณ:{' '}
+                <span className="underline">
+                  {myPlayer?.role === 'cheese_thief' ? '🧀 จอมโจรชีส' : '🐭 หนูขี้เซา'}
+                </span>{' '}
+                · สังเกตโต๊ะและทำแอ็กชันภายใน {hourSecondsLeft} วินาที
               </div>
             </div>
 
-            {/* ACTION 1: If Player is CHEESE THIEF on their steal hour */}
-            {myPlayer?.role === 'cheese_thief' &&
-              currentRoom.nightHour === currentRoom.stolenHour && (
-                <div className="p-4 bg-amber-50 border-2 border-amber-400 rounded-2xl space-y-2.5 shadow-sm">
-                  <div className="text-xs sm:text-sm font-extrabold text-amber-950">
-                    🧀 ถึงเวลาลงมือของจอมโจรชีส! คุณ &ldquo;ต้อง&rdquo;
-                    คว้าชีสไปซ่อนให้มิดชิด (แม้จะมีคนอื่นตื่นอยู่ด้วยก็ตาม)
-                  </div>
-                  {currentRoom.cheeseStolen || myPlayer?.hasGrabbedCheese ? (
-                    <div className="py-2 px-4 bg-emerald-100 text-emerald-900 font-bold text-xs rounded-xl inline-flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>คุณคว้าชีสก้อนทองไปซ่อนเรียบร้อยแล้ว!</span>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={onGrabCheese}
-                      className="w-full py-3 px-5 bg-amber-400 hover:bg-amber-300 text-amber-950 font-black text-sm rounded-xl shadow-sm transition-transform active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      <Hand className="w-4 h-4" />
-                      <span>กดคว้าชีสก้อนทองไปซ่อนเดี๋ยวนี้!</span>
-                    </button>
-                  )}
+            {/* CUTE ANIMATED CHEESE STATUS PEDESTAL (GLANCEABLE SAFE VS STOLEN) */}
+            {currentHour < currentRoom.stolenHour ? (
+              /* STATE 1: CHEESE IS SAFE -> Bouncy Floating Cheese Animation */
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50 via-yellow-50 to-emerald-50 border-2 border-emerald-300 shadow-sm flex flex-col sm:flex-row items-center justify-center gap-4 text-center sm:text-left relative overflow-hidden">
+                <div className="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-white border-2 border-amber-300 shadow-xs shrink-0">
+                  <motion.span
+                    animate={{
+                      y: [0, -9, 0],
+                      scale: [1, 1.08, 1],
+                      rotate: [-3, 3, -3],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                    className="text-5xl select-none block"
+                  >
+                    🧀
+                  </motion.span>
+                  <motion.span
+                    animate={{ opacity: [0.3, 1, 0.3], scale: [0.85, 1.15, 0.85] }}
+                    transition={{ duration: 1.4, repeat: Infinity }}
+                    className="absolute -top-1 -right-1 text-sm select-none"
+                  >
+                    ✨
+                  </motion.span>
                 </div>
-              )}
 
-            {/* ACTION 2: Who is awake with me vs Solo Wake Cup Peek */}
-            <div className="p-4 bg-white/95 border border-amber-300 rounded-2xl text-xs text-slate-800 space-y-3">
-              {coAwakeWithMeNow.length > 0 ? (
-                <div className="space-y-1.5">
-                  <div className="font-extrabold text-rose-700 text-sm">
-                    👀 คุณลืมตามาเจอคนอื่นตื่นพร้อมกันในชั่วโมงนี้!
+                <div className="space-y-1">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-200/90 text-emerald-950">
+                    ✓ SAFE ON TABLE · ชีสยังอยู่ครบ!
+                  </span>
+                  <div className="text-base sm:text-lg font-black text-emerald-950">
+                    🧀 ก้อนชีสยังวางอยู่กลางโต๊ะ!
                   </div>
-                  <p className="text-slate-700 font-semibold">
-                    ผู้ที่ลืมตาพร้อมกับคุณตอนตี {currentRoom.nightHour}:00 น.:{' '}
-                    <strong className="text-rose-900 underline">
-                      {coAwakeWithMeNow.map((p) => p.name).join(', ')}
-                    </strong>
+                  <p className="text-xs text-slate-600 font-medium">
+                    ณ เวลาตี {currentHour}:00 น. ชีสก้อนทองยังลอยดึ๋งๆ อยู่บนจานกลางโต๊ะ ยังไม่ถูกขโมยไป
                   </p>
-                  <p className="text-[11px] text-slate-500">
-                    กติกา: เมื่อเจอคนอื่นตื่นพร้อมกัน ให้อยู่เฉยๆ
-                    หรือยิ้มให้กันเงียบๆ ห้ามส่งสัญญาณ
+                </div>
+              </div>
+            ) : currentHour === currentRoom.stolenHour ? (
+              /* STATE 2: HEIST HOUR -> Trembling Cheese + Sneaking Paw Prints */
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-100 via-orange-50 to-amber-100 border-2 border-amber-400 shadow-sm flex flex-col sm:flex-row items-center justify-center gap-4 text-center sm:text-left relative overflow-hidden">
+                <div className="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-white border-2 border-amber-400 shadow-xs shrink-0">
+                  <motion.span
+                    animate={{
+                      scale: [1, 1.12, 0.92, 1],
+                      rotate: [-8, 8, -6, 0],
+                    }}
+                    transition={{
+                      duration: 0.85,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                    className="text-4xl select-none block"
+                  >
+                    🧀
+                  </motion.span>
+                  <motion.span
+                    animate={{ x: [6, 0, 6], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 0.75, repeat: Infinity }}
+                    className="absolute -bottom-1 -right-1 text-xl select-none"
+                  >
+                    🐾
+                  </motion.span>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400 text-amber-950">
+                    ⚡ HEIST IN PROGRESS · ชั่วโมงลงมือ!
+                  </span>
+                  <div className="text-base sm:text-lg font-black text-amber-950">
+                    {currentRoom.cheeseStolen || myPlayer?.hasGrabbedCheese
+                      ? '🐾 ชีสเพิ่งถูกคว้าไปซ่อนในชั่วโมงนี้!'
+                      : '⚡ จอมโจรชีสกำลังขโมยชีสในชั่วโมงนี้!'}
+                  </div>
+                  <p className="text-xs text-amber-900 font-medium">
+                    ชั่วโมงตี {currentHour}:00 น. คือชั่วโมงที่ก้อนชีสถูกขโมยไปจากกลางโต๊ะ!
+                  </p>
+                </div>
+              </div>
+            ) : (
+              /* STATE 3: CHEESE IS STOLEN -> Blinking Ghost Cheese + Empty Plate & Paw Prints */
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-rose-50 via-pink-50 to-rose-100 border-2 border-rose-300 shadow-sm flex flex-col sm:flex-row items-center justify-center gap-4 text-center sm:text-left relative overflow-hidden">
+                <div className="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-white/90 border-2 border-dashed border-rose-400 shadow-xs shrink-0">
+                  <motion.span
+                    animate={{
+                      opacity: [0.15, 0.9, 0.15],
+                      scale: [0.92, 1.04, 0.92],
+                    }}
+                    transition={{
+                      duration: 0.8,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                    className="text-5xl select-none block grayscale-[35%]"
+                  >
+                    🧀
+                  </motion.span>
+                  <motion.span
+                    animate={{ opacity: [1, 0.3, 1] }}
+                    transition={{ duration: 0.8, repeat: Infinity }}
+                    className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-md bg-rose-600 text-white font-mono font-black text-[10px]"
+                  >
+                    หาย!
+                  </motion.span>
+                  <span className="absolute -bottom-1 -left-1 text-base select-none">
+                    🐾
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-200 text-rose-950">
+                    🚨 CHEESE MISSING · ชีสถูกขโมยไปแล้ว!
+                  </span>
+                  <div className="text-base sm:text-lg font-black text-rose-950">
+                    🚨 ก้อนชีสหายไปแล้ว! เหลือแต่จานว่างเปล่า
+                  </div>
+                  <p className="text-xs text-rose-900 font-medium">
+                    จอมโจรแอบขโมยชีสไปก่อนเวลาตี {currentHour}:00 น. แล้ว (ทิ้งไว้เพียงรอยเท้าหนู 🐾)
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* ACTION 1: Cheese Thief Steal Action */}
+            {myPlayer?.role === 'cheese_thief' && currentHour === currentRoom.stolenHour && (
+              <div className="p-4 bg-white/95 border-2 border-amber-400 rounded-2xl shadow-sm space-y-3">
+                <div className="text-xs sm:text-sm font-extrabold text-amber-950 flex items-center justify-center gap-1.5">
+                  <Hand className="w-4 h-4 text-amber-700" />
+                  <span>ถึงเวลาลงมือของจอมโจรชีส! คว้าชีสไปซ่อนให้มิดชิด</span>
+                </div>
+
+                {currentRoom.cheeseStolen || myPlayer?.hasGrabbedCheese ? (
+                  <div className="py-2.5 px-4 bg-emerald-100 text-emerald-900 font-black text-xs sm:text-sm rounded-xl inline-flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>คุณคว้าชีสก้อนทองไปซ่อนสำเร็จแล้ว!</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onGrabCheese}
+                    className="w-full py-4 px-5 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-amber-950 font-black text-base rounded-2xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2 border border-amber-300"
+                  >
+                    <Hand className="w-5 h-5 fill-current" />
+                    <span>🧀 กดคว้าชีสไปซ่อนเดี๋ยวนี้!</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* ACTION 2: Awake with other players vs Solo Wake Cup Peek */}
+            <div className="p-4 sm:p-5 bg-white/95 border border-amber-300/80 rounded-2xl text-xs text-slate-800 space-y-3 shadow-2xs">
+              {coAwakeWithMeNow.length > 0 ? (
+                /* WOKE UP TOGETHER WITH OTHER PLAYERS */
+                <div className="space-y-3">
+                  <div className="font-extrabold text-rose-800 text-sm flex items-center justify-center gap-1.5">
+                    <UserCheck className="w-4 h-4 text-rose-600" />
+                    <span>คุณลืมตามาเจอคนอื่นตื่นพร้อมกันในชั่วโมงนี้!</span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                    {coAwakeWithMeNow.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-xl"
+                      >
+                        {renderPlayerAvatar(p, 'w-7 h-7')}
+                        <span className="font-black text-rose-950 text-xs">
+                          {p.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-[11px] text-slate-600 font-medium">
+                    กติกา: ยิ้มให้กันเงียบๆ ห้ามส่งเสียงหรือขยับตัวแรง
                     และไม่สามารถเปิดส่องถ้วยเต๋าได้
                   </p>
-                  {currentRoom.nightHour === currentRoom.stolenHour &&
-                    myPlayer?.role !== 'cheese_thief' && (
-                      <div className="p-2.5 bg-rose-100 border border-rose-300 rounded-xl text-rose-950 font-bold mt-2">
-                        ⚡ คุณเห็น{' '}
-                        <strong>{thiefPlayer?.name || 'จอมโจรชีส'}</strong>{' '}
-                        เอื้อมมือคว้าชีสก้อนทองไปต่อหน้าต่อตา!
-                        {totalPlayers === 5 &&
-                          ' (กติกา 5 คน: เมื่อคุณเห็นตอนจอมโจรขโมยชีส คุณกลายเป็น "ลูกน้อง" ย้ายข้างไปช่วยจอมโจรทันที!)'}
-                      </div>
-                    )}
+
+                  {currentHour === currentRoom.stolenHour && myPlayer?.role !== 'cheese_thief' && (
+                    <div className="p-2.5 bg-rose-100 border border-rose-300 rounded-xl text-rose-950 font-bold mt-2">
+                      ⚡ คุณเห็น <strong>{thiefPlayer?.name || 'จอมโจรชีส'}</strong>{' '}
+                      เอื้อมมือคว้าชีสไปต่อหน้าต่อตา!
+                      {totalPlayers === 5 &&
+                        ' (กติกา 5 คน: คุณกลายเป็น "ลูกน้อง" ย้ายข้างไปช่วยจอมโจรทันที!)'}
+                    </div>
+                  )}
                 </div>
               ) : (
-                /* SOLO WAKE: Sleepyhead can peek at 1 player's dice cup (in 5-8 player mode!) */
-                <div className="space-y-2.5">
-                  <div className="font-extrabold text-emerald-800 text-sm">
-                    ✨ คุณเป็นคนเดียวที่ตื่นในชั่วโมงนี้!
-                    (ไม่มีใครลืมตาชนกับคุณ)
+                /* SOLO WAKE: Peek another player's dice cup (5-8 players) */
+                <div className="space-y-3">
+                  <div className="font-extrabold text-emerald-800 text-sm flex items-center justify-center gap-1.5">
+                    <Eye className="w-4 h-4 text-emerald-600" />
+                    <span>คุณตื่นคนเดียวในชั่วโมงนี้! (ไม่มีใครตื่นชนกับคุณ)</span>
                   </div>
 
-                  {myPlayer?.role !== 'cheese_thief' &&
-                  !isFourPlayerDualDice ? (
+                  {myPlayer?.role !== 'cheese_thief' && !isFourPlayerDualDice ? (
                     myPlayer?.peekedTargetId ? (
                       <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-950 space-y-1">
                         <div className="font-bold">
                           🔍 คุณแอบเปิดส่องถ้วยเต๋าของ{' '}
-                          <span className="underline">
+                          <span className="underline font-black">
                             {myPlayer.peekedTargetName}
                           </span>{' '}
                           เรียบร้อยแล้ว:
@@ -231,11 +430,9 @@ export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
                     ) : (
                       <div className="space-y-2">
                         <p className="text-slate-700 font-semibold">
-                          กติกาหนูขี้เซาตื่นคนเดียว:
-                          เลือกแอบส่องเลขเต๋าใต้ถ้วยของคนอื่นได้ 1 คน (ภายใน 10
-                          วินาที):
+                          กติกาหนูขี้เซาตื่นคนเดียว: แอบส่องเลขเต๋าใต้ถ้วยเพื่อนได้ 1 คน:
                         </p>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {players
                             .filter((p) => p.id !== currentUid)
                             .map((p) => (
@@ -243,90 +440,99 @@ export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
                                 key={p.id}
                                 type="button"
                                 onClick={() => onPeekPlayerCup(p.id)}
-                                className="p-2.5 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-xl text-amber-950 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                                className="p-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl text-amber-950 font-bold text-xs flex items-center gap-2 cursor-pointer transition-transform active:scale-95 shadow-2xs"
                               >
-                                <Search className="w-3.5 h-3.5 text-amber-700" />
-                                <span className="truncate">
-                                  ส่องถ้วย {p.name}
-                                </span>
+                                {renderPlayerAvatar(p, 'w-6 h-6')}
+                                <div className="truncate text-left">
+                                  <div className="truncate font-black">{p.name}</div>
+                                  <div className="text-[10px] text-amber-800">แตะเพื่อส่อง</div>
+                                </div>
                               </button>
                             ))}
                         </div>
                       </div>
                     )
-                  ) : isFourPlayerDualDice &&
-                    myPlayer?.role !== 'cheese_thief' ? (
+                  ) : isFourPlayerDualDice && myPlayer?.role !== 'cheese_thief' ? (
                     <p className="text-slate-600">
-                      กติกาโหมดพิเศษ 4 คน:
-                      แม้จะตื่นมาคนเดียวก็ห้ามเปิดส่องถ้วยเต๋าของคนอื่น
+                      กติกาโหมด 4 คน: แม้จะตื่นคนเดียวก็ห้ามเปิดส่องถ้วยเต๋า
                     </p>
                   ) : null}
                 </div>
               )}
+            </div>
+          </motion.div>
+        ) : (
+          /* ========================================================= */
+          /* SLEEPING STATE: Deep Midnight Pastel with Animated Eyes   */
+          /* ========================================================= */
+          <motion.div
+            key="sleeping-state"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            className="p-6 sm:p-8 rounded-3xl border-2 border-indigo-900/60 bg-gradient-to-b from-[#0f172a] via-[#1e1b4b] to-[#0b0f19] text-slate-100 shadow-2xl space-y-4 text-center relative overflow-hidden"
+          >
+            {/* Ambient Night Stars Effect */}
+            <div className="absolute top-2 left-6 text-indigo-400/40 text-xs font-mono">✦</div>
+            <div className="absolute top-8 right-10 text-amber-300/30 text-sm font-mono">★</div>
+            <div className="absolute bottom-4 left-12 text-indigo-300/30 text-xs font-mono">✧</div>
 
-              <div className="pt-2 border-t border-amber-200/70 text-[11px] font-mono text-slate-600">
-                สถานะชีสกลางโต๊ะ:{' '}
-                {currentRoom.nightHour < currentRoom.stolenHour
-                  ? '🧀 ก้อนชีสยังวางอยู่กลางโต๊ะ'
-                  : currentRoom.nightHour === currentRoom.stolenHour
-                  ? '⚡ จอมโจรชีสกำลังขโมยชีสในชั่วโมงนี้!'
-                  : '❗ ก้อนชีสกลางโต๊ะหายไปแล้ว!'}
+            {/* Animated Closed Eyes Icon */}
+            <div className="py-2">
+              <div className="w-20 h-20 mx-auto rounded-full bg-indigo-950/80 border border-indigo-700/50 flex flex-col items-center justify-center shadow-inner">
+                <EyeOff className="w-8 h-8 text-indigo-300 animate-pulse" />
+                <span className="text-[10px] font-mono text-indigo-300 font-bold mt-1">
+                  z Z Z
+                </span>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="space-y-2.5 opacity-95">
-            <span className="text-5xl">😴</span>
-            <div className="text-lg font-bold text-slate-200">
-              ตี {currentRoom.nightHour}:00 น. · หลับตาอยู่เงียบๆ
-            </div>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto">
-              Moderator กำลังขานเวลาชั่วโมงละ 10 วินาที
-              (หรือกดปุ่มด้านล่างเพื่อข้ามไปชั่วโมงถัดไปได้ทันที)
-            </p>
-          </div>
-        )}
-      </div>
 
-      {/* Visual Clock Timeline Tracker */}
-      <div className="p-3 bg-white border border-amber-100 rounded-2xl grid grid-cols-6 gap-1.5 text-xs font-mono font-bold">
-        {[1, 2, 3, 4, 5, 6].map((hour) => (
-          <div
-            key={hour}
-            className={`py-2 rounded-xl flex flex-col items-center justify-center transition-all ${
-              hour === currentRoom.nightHour
-                ? 'bg-amber-400 text-amber-950 scale-105 shadow-xs font-extrabold'
-                : hour < currentRoom.nightHour
-                ? 'bg-emerald-100 text-emerald-800'
-                : 'bg-slate-100 text-slate-400'
-            }`}
-          >
-            <span>ตี {hour}</span>
-            {(hour === myWakeHour ||
-              (isFourPlayerDualDice &&
-                myPlayer?.role === 'cheese_thief' &&
-                hour === mySecondHour)) && (
-              <span className="text-[9px] text-rose-600 font-sans font-bold">
-                ตื่น
+            <div className="space-y-1.5">
+              <div className="text-xl sm:text-2xl font-black text-slate-100 tracking-tight">
+                💤 หลับตาอยู่... อย่าแอบมองโต๊ะ
+              </div>
+              <div className="text-xs sm:text-sm font-bold text-indigo-300">
+                ขณะนี้เวลา ตี {currentHour}:00 น. · คุณไม่ได้ตื่นในชั่วโมงนี้
+              </div>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                ชั่วโมงที่คุณต้องตื่นคือ{' '}
+                <strong className="text-amber-300 font-bold">
+                  ตี {myWakeHour}:00 น.
+                  {isFourPlayerDualDice && myPlayer?.role === 'cheese_thief' && mySecondHour
+                    ? ` และ ตี ${mySecondHour}:00 น.`
+                    : ''}
+                </strong>
+                <br />
+                ฟังสัญญาณเสียงจากผู้คุมเกม หรือรอเสียงกริ่งปลุก
+              </p>
+            </div>
+
+            {/* Countdown Badge inside Sleeping Card */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-950/70 border border-indigo-800/80 rounded-2xl text-xs font-mono text-indigo-200">
+              <Clock className="w-4 h-4 text-indigo-400" />
+              <span>
+                {isNightPaused
+                  ? '⏸️ พักหยุดเวลานับถอยหลัง'
+                  : `ตี ${currentHour} จะผ่านไปในอีก ${hourSecondsLeft} วินาที`}
               </span>
-            )}
-          </div>
-        ))}
-      </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* HOST PLAYBACK & NIGHT TIMER HUD CONTROLS */}
       {isHost ? (
-        <div className="p-4 bg-amber-50/90 border border-amber-300 rounded-2xl shadow-xs space-y-3 text-left">
+        <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-2xl shadow-xs space-y-2.5 text-left">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/80 pb-2">
             <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
               <SlidersHorizontal className="w-3.5 h-3.5 text-amber-700" />
               <span>แผงควบคุมเวลาช่วงกลางคืน (หัวหน้าโต๊ะ)</span>
             </span>
 
-            {/* Quick On-the-Fly Duration Selector */}
+            {/* Quick Duration Selector */}
             {onChangeNightDuration && (
               <div className="flex items-center gap-1 text-[11px] font-bold">
-                <span className="text-slate-600 mr-1">ปรับเวลาต่อชั่วโมง:</span>
+                <span className="text-slate-600 mr-1">ปรับเวลา:</span>
                 {[5, 8, 10, 15, 20].map((sec) => (
                   <button
                     key={sec}
@@ -345,13 +551,13 @@ export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {/* Pause / Resume Button */}
             {onToggleNightPause && (
               <button
                 type="button"
                 onClick={() => onToggleNightPause(!isNightPaused)}
-                className={`py-3 px-4 text-xs sm:text-sm font-extrabold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-2xs ${
+                className={`py-2.5 px-3 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs ${
                   isNightPaused
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                     : 'bg-amber-200/90 hover:bg-amber-300 text-amber-950 border border-amber-300'
@@ -359,12 +565,12 @@ export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
               >
                 {isNightPaused ? (
                   <>
-                    <Play className="w-4 h-4 fill-current" />
+                    <Play className="w-3.5 h-3.5 fill-current" />
                     <span>เล่นต่อนับถอยหลัง (Resume)</span>
                   </>
                 ) : (
                   <>
-                    <Pause className="w-4 h-4 fill-current" />
+                    <Pause className="w-3.5 h-3.5 fill-current" />
                     <span>หยุดเวลาชั่วคราว (Pause)</span>
                   </>
                 )}
@@ -374,16 +580,16 @@ export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
             {/* Skip to Next Hour */}
             <button
               type="button"
-              onClick={() => onAdvanceNightHour(currentRoom.nightHour + 1)}
-              className="py-3 px-4 text-xs sm:text-sm font-extrabold text-amber-950 bg-amber-400 hover:bg-amber-300 border border-amber-400 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-2xs"
+              onClick={() => onAdvanceNightHour(currentHour + 1)}
+              className="py-2.5 px-3 text-xs font-extrabold text-amber-950 bg-amber-400 hover:bg-amber-300 border border-amber-400 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
             >
-              <FastForward className="w-4 h-4" />
+              <FastForward className="w-3.5 h-3.5" />
               <span>
-                {currentRoom.nightHour < 6
-                  ? `ข้ามไปตี ${currentRoom.nightHour + 1}:00 น. ทันที`
+                {currentHour < 6
+                  ? `ข้ามไปตี ${currentHour + 1}:00 น.`
                   : totalPlayers >= 5
-                  ? 'ครบ 6 ชั่วโมง → ไปช่วงตั้งลูกน้อง'
-                  : 'ครบ 6 ชั่วโมง → เข้าสู่ตอนเช้า'}
+                  ? 'ครบ 6 ชม. → ช่วงตั้งลูกน้อง'
+                  : 'ครบ 6 ชม. → สู่ตอนเช้า'}
               </span>
             </button>
           </div>
@@ -392,12 +598,12 @@ export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
         /* Non-host Skip / Proceed indicator */
         <button
           type="button"
-          onClick={() => onAdvanceNightHour(currentRoom.nightHour + 1)}
-          className="w-full py-3 px-4 text-xs sm:text-sm font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 rounded-2xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 min-h-[44px]"
+          onClick={() => onAdvanceNightHour(currentHour + 1)}
+          className="w-full py-2.5 px-4 text-xs font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 rounded-2xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 min-h-[40px]"
         >
           <span>
-            {currentRoom.nightHour < 6
-              ? `ข้ามไปชั่วโมงถัดไป: ตี ${currentRoom.nightHour + 1}:00 น. (${hourSecondsLeft}s)`
+            {currentHour < 6
+              ? `ข้ามไปชั่วโมงถัดไป: ตี ${currentHour + 1}:00 น. (${hourSecondsLeft}s)`
               : totalPlayers >= 5
               ? `ครบ 6 ชั่วโมง → ไปช่วงตั้งลูกน้อง (Follower Phase)`
               : 'ครบ 6 ชั่วโมง → เข้าสู่ตอนเช้า (ถกเถียง & โหวต)'}

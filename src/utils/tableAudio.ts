@@ -39,25 +39,58 @@ class TableAudioSynthesizer {
     }
   }
 
-  // Play night hour transition chime (gentle temple bell)
-  playHourChime(hour: number) {
+  // Play night hour transition chime (wake up call - bright crystal bell C5 -> G5)
+  playWakeChime(hour: number = 1) {
     const ctx = this.getContext();
     if (!ctx) return;
 
-    try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      // Base frequency ascends slightly with each hour
-      const freq = 440 + hour * 35;
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 1.2);
-    } catch {}
+    const baseFreq = 523.25 + (hour - 1) * 20; // C5 base with subtle hour pitch
+    const notes = [baseFreq, baseFreq * 1.5]; // Perfect 5th chime (C -> G)
+    notes.forEach((freq, idx) => {
+      setTimeout(() => {
+        try {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime);
+          gain.gain.setValueAtTime(0.22, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.1);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 1.1);
+        } catch {}
+      }, idx * 160);
+    });
+  }
+
+  // Alias for backward compatibility
+  playHourChime(hour: number) {
+    this.playWakeChime(hour);
+  }
+
+  // Play night hour bedtime chime (gentle descending lullaby gong: G4 -> E4 -> C4)
+  playSleepChime() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    const notes = [392.0, 329.63, 261.63]; // G4 -> E4 -> C4
+    notes.forEach((freq, idx) => {
+      setTimeout(() => {
+        try {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle'; // warmer, softer bedtime tone
+          osc.frequency.setValueAtTime(freq, ctx.currentTime);
+          gain.gain.setValueAtTime(0.2, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.4);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 1.4);
+        } catch {}
+      }, idx * 180);
+    });
   }
 
   // Play morning wake up fanfare

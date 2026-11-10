@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for Cheese Thief night phase timer controls: customizable duration (5s-20s) both in lobby and on-the-fly, synchronized pause/resume controls, and next-hour skip actions.",
-  "updatedAt":  "2026-11-09T13:47:26.915159274Z",
+  "summary":  "Revised implementation plan for Cheese Thief: (1) eliminate duplicate Role Deal / Mobile Sticky Action Bar buttons into a single unified button 'จำบทบาทแล้ว → ไปทอยเต๋าในถ้วย', and (2) add a cute animated Centerpiece Cheese Pedestal Widget with bouncy floating cheese when safe and blinking ghost-cheese + paw prints when stolen.",
+  "updatedAt":  "2026-11-10T04:12:49.849360560Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

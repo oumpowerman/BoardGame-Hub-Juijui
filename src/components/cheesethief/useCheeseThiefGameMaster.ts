@@ -69,8 +69,8 @@ export function useCheeseThiefGameMaster({
         thaiGameMaster.speakHourWake(currentHour);
       }
     } else if (currentHour >= 1 && currentHour <= 6 && !paused) {
-      // Non-host devices or muted mode play gentle sound chime
-      tableAudio.playHourChime(currentHour);
+      // Non-host devices or muted mode play wake chime
+      tableAudio.playWakeChime(currentHour);
     }
 
     const interval = window.setInterval(() => {
@@ -80,16 +80,18 @@ export function useCheeseThiefGameMaster({
           return prev;
         }
 
-        // At second 4 (or near half-time for short durations), command to close eyes
+        // At sleep trigger window (e.g. 3-4s remaining), command to close eyes
         const sleepTriggerSec = Math.max(2, Math.min(4, Math.floor(duration / 2)));
         if (
           prev === sleepTriggerSec &&
-          isHost &&
-          isHostVoiceEnabled &&
           currentHour >= 1 &&
           currentHour <= 6
         ) {
-          thaiGameMaster.speakHourSleep(currentHour);
+          // Both host and client devices hear bedtime chime cue
+          tableAudio.playSleepChime();
+          if (isHost && isHostVoiceEnabled) {
+            thaiGameMaster.speakHourSleep(currentHour);
+          }
         }
 
         if (prev <= 1) {

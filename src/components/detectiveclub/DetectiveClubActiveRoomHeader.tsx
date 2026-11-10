@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, VolumeX, QrCode, LogOut } from 'lucide-react';
+import { Volume2, VolumeX, QrCode, LogOut, Sparkles } from 'lucide-react';
 
 export interface DetectiveClubActiveRoomHeaderProps {
   roomCode: string;
@@ -8,6 +8,7 @@ export interface DetectiveClubActiveRoomHeaderProps {
   isHost: boolean;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  onTestVoice?: () => void;
   onOpenShareModal: () => void;
   onLeaveRoom: () => void;
 }
@@ -19,6 +20,7 @@ export const DetectiveClubActiveRoomHeader: React.FC<DetectiveClubActiveRoomHead
   isHost,
   soundEnabled,
   onToggleSound,
+  onTestVoice,
   onOpenShareModal,
   onLeaveRoom,
 }) => {
@@ -38,11 +40,22 @@ export const DetectiveClubActiveRoomHeader: React.FC<DetectiveClubActiveRoomHead
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {onTestVoice && (
+          <button
+            type="button"
+            onClick={onTestVoice}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs bg-white hover:bg-amber-50 border border-amber-300 text-amber-950 transition-colors cursor-pointer min-h-[38px]"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <span>ทดสอบเสียง GM</span>
+          </button>
+        )}
+
         <button
           type="button"
           onClick={onToggleSound}
-          className={`inline-flex items-center gap-1 px-3 py-2 rounded-xl font-bold text-xs border transition-colors cursor-pointer min-h-[38px] ${
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs border transition-colors cursor-pointer min-h-[38px] ${
             soundEnabled
               ? 'bg-amber-50 border-amber-300 text-amber-950 font-extrabold'
               : 'bg-slate-100 border-slate-200 text-slate-500'
@@ -53,8 +66,8 @@ export const DetectiveClubActiveRoomHeader: React.FC<DetectiveClubActiveRoomHead
           ) : (
             <VolumeX className="w-3.5 h-3.5 text-slate-400" />
           )}
-          <span className="hidden sm:inline">
-            {soundEnabled ? 'เสียง: เปิด' : 'เสียง: ปิด'}
+          <span>
+            {soundEnabled ? 'เสียงพากย์ GM: เปิด' : 'เสียงพากย์ GM: ปิด'}
           </span>
         </button>
 

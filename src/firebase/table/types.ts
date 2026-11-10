@@ -103,18 +103,24 @@ export interface FirestoreRoom {
   guesserVoteResult?: 'accused_guesser' | 'spared_guesser' | 'timeout_loss' | '';
   guesserYesVotes?: number;
   guesserNoVotes?: number;
+  insiderTurnOrderIds?: string[];
   // Undercover Specific Fields
   undercoverCategory?: string;
   undercoverCategoryLabel?: string;
   undercoverCivilianWord?: string;
   undercoverSpyWord?: string;
   enableMrWhite?: boolean;
+  undercoverTurnOrderIds?: string[];
   undercoverTurnIndex?: number;
   undercoverRoundNumber?: number;
   undercoverTurnPlayerId?: string;
   undercoverTurnDeadline?: string;
   clueDurationSeconds?: number;
   undercoverEliminatedIds?: string[];
+  undercoverRoundVerdictPending?: boolean;
+  undercoverLastEliminatedId?: string;
+  undercoverLastEliminatedName?: string;
+  undercoverLastEliminatedRole?: PlayerRoleCard;
   mrWhitePlayerId?: string;
   mrWhiteGuessedWord?: string;
   mrWhiteGuessSuccess?: boolean;
@@ -125,6 +131,10 @@ export interface FirestoreRoom {
   dcConspiratorId?: string;
   dcRoundNumber?: number;
   dcCardRound?: number;
+  dcTurnOrderIds?: string[];
+  dcTurnIndex?: number;
+  dcCardPlacedPlayerIds?: string[];
+  dcSpeakerIndex?: number;
   dcDiscussionDurationSeconds?: number;
   dcVotes?: Record<string, string>;
   dcScores?: Record<string, number>;
@@ -180,6 +190,7 @@ export interface FirestoreRoom {
 export interface FirestorePlayer {
   id: string;
   name: string;
+  avatarUrl?: string;
   isHost: boolean;
   isReady: boolean;
   isFriendSeat?: boolean;

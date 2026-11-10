@@ -54,6 +54,7 @@ import {
   listenToRoomInvites,
   getFriendsProfiles,
   sendRoomInviteToFriend,
+  addInstantMutualFriendByCodeOrUid,
 } from './firebase/userService';
 
 export default function App() {
@@ -166,6 +167,32 @@ export default function App() {
       unsubOutgoing();
       unsubInvites();
     };
+  }, [currentUser?.uid]);
+
+  // Auto-detect ?addFriend=CTxxxx from QR Code scan or shared friend link
+  useEffect(() => {
+    if (!currentUser?.uid || typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const addFriendCode = params.get('addFriend');
+    if (!addFriendCode || !addFriendCode.trim()) return;
+
+    // Remove query param from URL bar so it only runs once
+    params.delete('addFriend');
+    const cleanSearch = params.toString();
+    const newUrl = `${window.location.pathname}${
+      cleanSearch ? `?${cleanSearch}` : ''
+    }${window.location.hash}`;
+    window.history.replaceState({}, '', newUrl);
+
+    addInstantMutualFriendByCodeOrUid(currentUser, addFriendCode.trim())
+      .then((addedFriend) => {
+        showLiveNotification(
+          `🎉 เพิ่ม "${addedFriend.accountName}" เป็นเพื่อนผ่าน QR/ลิงก์ด่วนเรียบร้อยแล้ว!`
+        );
+      })
+      .catch(() => {
+        // Ignore if self or already added
+      });
   }, [currentUser?.uid]);
 
   // Listen to Active Rooms

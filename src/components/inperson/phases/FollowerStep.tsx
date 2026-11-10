@@ -81,15 +81,24 @@ export const FollowerStep: React.FC<FollowerStepProps> = ({
                           totalPlayers === 6 ? 1 : 2
                         )
                       }
-                      className={`p-3.5 rounded-2xl border font-bold text-xs sm:text-sm flex items-center justify-between cursor-pointer transition-all ${
+                      className={`p-3 rounded-2xl border font-bold text-xs sm:text-sm flex items-center justify-between cursor-pointer transition-all ${
                         isPicked
                           ? 'bg-rose-50 border-rose-400 text-rose-950 shadow-xs'
                           : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-rose-50/40'
                       }`}
                     >
-                      <span>{p.name}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center font-bold text-amber-900 text-xs shrink-0 overflow-hidden shadow-2xs">
+                          {p.avatarUrl ? (
+                            <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
+                          ) : (
+                            p.name.slice(0, 2).toUpperCase()
+                          )}
+                        </div>
+                        <span className="truncate">{p.name}</span>
+                      </div>
                       {isPicked && (
-                        <span className="px-2 py-0.5 bg-rose-600 text-white text-[10px] rounded-full">
+                        <span className="px-2 py-0.5 bg-rose-600 text-white text-[10px] rounded-full shrink-0">
                           เลือกเป็นลูกน้อง
                         </span>
                       )}

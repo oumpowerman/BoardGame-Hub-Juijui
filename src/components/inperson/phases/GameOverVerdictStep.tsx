@@ -77,25 +77,34 @@ export const GameOverVerdictStep: React.FC<GameOverVerdictStepProps> = ({
                     : 'bg-amber-50/40 border-amber-200/60'
                 }`}
               >
-                <div>
-                  <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
-                    <span>
-                      {p.name} {p.id === currentUid && '(คุณ)'}
-                    </span>
-                    {isAccused && (
-                      <span className="text-[10px] px-2 py-0.5 bg-rose-600 text-white rounded-full font-bold">
-                        ถูกชี้โหวตมากที่สุด (เปิดการ์ด)
-                      </span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center font-bold text-amber-900 text-xs shrink-0 overflow-hidden shadow-2xs">
+                    {p.avatarUrl ? (
+                      <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      p.name.slice(0, 2).toUpperCase()
                     )}
                   </div>
-                  <div className="text-[11px] text-slate-500 font-mono">
-                    เต๋าในถ้วย: ตี {p.diceHour || '?'}:00 น.
-                    {p.secondaryDiceHour
-                      ? ` / ลูกที่ 2: ตี ${p.secondaryDiceHour}:00 น.`
-                      : ''}
-                    {p.peekedTargetName
-                      ? ` · ส่องถ้วย ${p.peekedTargetName} (ตี ${p.peekedDiceValue})`
-                      : ''}
+                  <div>
+                    <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                      <span>
+                        {p.name} {p.id === currentUid && '(คุณ)'}
+                      </span>
+                      {isAccused && (
+                        <span className="text-[10px] px-2 py-0.5 bg-rose-600 text-white rounded-full font-bold">
+                          ถูกชี้โหวตมากที่สุด (เปิดการ์ด)
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-mono">
+                      เต๋าในถ้วย: ตี {p.diceHour || '?'}:00 น.
+                      {p.secondaryDiceHour
+                        ? ` / ลูกที่ 2: ตี ${p.secondaryDiceHour}:00 น.`
+                        : ''}
+                      {p.peekedTargetName
+                        ? ` · ส่องถ้วย ${p.peekedTargetName} (ตี ${p.peekedDiceValue})`
+                        : ''}
+                    </div>
                   </div>
                 </div>
                 <span

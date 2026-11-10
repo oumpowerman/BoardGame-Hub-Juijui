@@ -28,6 +28,35 @@ import {
 } from './roomHelpers';
 import { recordGameEloUpdates } from './leaderboardService';
 
+// Helper: Return alive players ordered by randomized undercoverTurnOrderIds
+export function getOrderedAlivePlayers(
+  allPlayers: FirestorePlayer[],
+  turnOrderIds?: string[],
+  eliminatedIds: string[] = []
+): FirestorePlayer[] {
+  const aliveMap = new Map<string, FirestorePlayer>();
+  allPlayers.forEach((p) => {
+    if (!eliminatedIds.includes(p.id)) {
+      aliveMap.set(p.id, p);
+    }
+  });
+
+  const ordered: FirestorePlayer[] = [];
+  if (turnOrderIds && turnOrderIds.length > 0) {
+    turnOrderIds.forEach((id) => {
+      const found = aliveMap.get(id);
+      if (found) {
+        ordered.push(found);
+        aliveMap.delete(id);
+      }
+    });
+  }
+
+  // Append any remaining alive players not in turnOrderIds
+  aliveMap.forEach((p) => ordered.push(p));
+  return ordered;
+}
+
 // U-1. Update Lobby Configuration (Mr. White toggle, category, clue timer)
 export async function updateUndercoverLobbySettings(
   roomId: string,
@@ -147,8 +176,27 @@ export async function startUndercoverGameAndDealRoles(
       });
     }
 
-    // First speaker
-    const firstSpeaker = players[0];
+    // Randomize speaking turn order (Fisher-Yates shuffle)
+    const turnOrderIds = players.map((p) => p.id);
+    for (let i = turnOrderIds.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [turnOrderIds[i], turnOrderIds[j]] = [turnOrderIds[j], turnOrderIds[i]];
+    }
+
+    // Rule: Mr. White is NEVER placed as 1st speaker (index 0) so they can hear at least one clue first
+    if (
+      mrWhitePlayerId &&
+      turnOrderIds.length > 1 &&
+      turnOrderIds[0] === mrWhitePlayerId
+    ) {
+      const swapIdx = 1 + Math.floor(Math.random() * (turnOrderIds.length - 1));
+      [turnOrderIds[0], turnOrderIds[swapIdx]] = [
+        turnOrderIds[swapIdx],
+        turnOrderIds[0],
+      ];
+    }
+
+    const firstSpeakerId = turnOrderIds[0] || players[0].id;
     const duration = roomData?.clueDurationSeconds || 45;
     const deadline = new Date(Date.now() + duration * 1000).toISOString();
 
@@ -158,12 +206,16 @@ export async function startUndercoverGameAndDealRoles(
       undercoverSpyWord: pickedPair.undercoverWord,
       undercoverCategoryLabel: pickedPair.categoryLabel,
       mrWhitePlayerId,
+      undercoverTurnOrderIds: turnOrderIds,
       undercoverTurnIndex: 0,
       undercoverRoundNumber: 1,
-      undercoverTurnPlayerId: firstSpeaker.id,
+      undercoverTurnPlayerId: firstSpeakerId,
       undercoverTurnDeadline: deadline,
       clueDurationSeconds: duration,
       undercoverEliminatedIds: [],
+      undercoverRoundVerdictPending: false,
+      undercoverLastEliminatedId: '',
+      undercoverLastEliminatedName: '',
       mrWhiteGuessedWord: '',
       mrWhiteGuessSuccess: false,
       undercoverHistory: [],
@@ -190,10 +242,9 @@ export async function acknowledgeUndercoverRole(roomId: string): Promise<void> {
     const playersSnap = await getDocs(
       collection(db, 'rooms', roomId, 'players')
     );
-    const allAcknowledged = playersSnap.docs.every(
-      (d) =>
-        d.id === user.uid ||
-        (d.data() as FirestorePlayer).roleAcknowledged === true
+    const allPlayers = playersSnap.docs.map((d) => d.data() as FirestorePlayer);
+    const allAcknowledged = allPlayers.every(
+      (p) => p.id === user.uid || p.roleAcknowledged === true
     );
 
     if (allAcknowledged) {
@@ -202,16 +253,22 @@ export async function acknowledgeUndercoverRole(roomId: string): Promise<void> {
       const duration = roomData?.clueDurationSeconds || 45;
       const deadline = new Date(Date.now() + duration * 1000).toISOString();
 
+      const orderedAlive = getOrderedAlivePlayers(
+        allPlayers,
+        roomData?.undercoverTurnOrderIds,
+        roomData?.undercoverEliminatedIds || []
+      );
+      const firstPlayerData = orderedAlive[0] || allPlayers[0];
+
       await updateDoc(doc(db, 'rooms', roomId), {
         status: 'undercover_clue',
         undercoverTurnIndex: 0,
-        undercoverTurnPlayerId: playersSnap.docs[0].id,
+        undercoverTurnPlayerId: firstPlayerData.id,
         undercoverTurnDeadline: deadline,
         updatedAt: new Date().toISOString(),
       });
 
       // If the first player is a bot, simulate their clue automatically
-      const firstPlayerData = playersSnap.docs[0].data() as FirestorePlayer;
       if (isAutoControlledSeat(firstPlayerData, user.uid)) {
         setTimeout(() => {
           autoSimulateBotClue(roomId, firstPlayerData);
@@ -311,9 +368,11 @@ export async function submitUndercoverClue(
     const allPlayers = playersSnap.docs.map((d) => d.data() as FirestorePlayer);
     const eliminatedIds = roomData.undercoverEliminatedIds || [];
 
-    // Filter alive players
-    const alivePlayers = allPlayers.filter(
-      (p) => !eliminatedIds.includes(p.id)
+    // Filter alive players ordered by randomized turn order
+    const alivePlayers = getOrderedAlivePlayers(
+      allPlayers,
+      roomData.undercoverTurnOrderIds,
+      eliminatedIds
     );
 
     const player = allPlayers.find((p) => p.id === activePlayerId);
@@ -650,11 +709,21 @@ async function processEliminationAndContinue(
       }
     }
 
+    const eliminatedPlayer = allPlayers.find(
+      (p) => p.id === eliminatedPlayerId
+    );
+
     if (winnerTeam !== 'in_progress') {
       // Game Over
       await updateDoc(roomRef, {
         status: 'undercover_game_over',
         undercoverEliminatedIds: updatedEliminatedList,
+        undercoverRoundVerdictPending: false,
+        undercoverLastEliminatedId: eliminatedPlayerId,
+        undercoverLastEliminatedName: eliminatedPlayer?.name || '',
+        ...(eliminatedPlayer?.role
+          ? { undercoverLastEliminatedRole: eliminatedPlayer.role }
+          : {}),
         winnerTeam,
         updatedAt: new Date().toISOString(),
       });
@@ -667,29 +736,80 @@ async function processEliminationAndContinue(
           (winnerTeam === 'mr_white' && p.role === 'undercover_mrwhite')
       );
     } else {
-      // Continue to next round
-      const nextRoundNumber = (roomData.undercoverRoundNumber || 1) + 1;
-      const duration = roomData.clueDurationSeconds || 45;
-      const deadline = new Date(Date.now() + duration * 1000).toISOString();
-      const firstAlivePlayer = remainingAlive[0];
-
+      // Pause on Round Elimination Verdict Banner so players clearly see who was eliminated,
+      // what their role was, and why the game continues to the next round!
       await updateDoc(roomRef, {
-        status: 'undercover_clue',
-        undercoverRoundNumber: nextRoundNumber,
-        undercoverTurnIndex: 0,
-        undercoverTurnPlayerId: firstAlivePlayer.id,
-        undercoverTurnDeadline: deadline,
+        status: 'undercover_vote',
+        undercoverRoundVerdictPending: true,
+        undercoverLastEliminatedId: eliminatedPlayerId,
+        undercoverLastEliminatedName: eliminatedPlayer?.name || '',
+        ...(eliminatedPlayer?.role
+          ? { undercoverLastEliminatedRole: eliminatedPlayer.role }
+          : {}),
         undercoverEliminatedIds: updatedEliminatedList,
-        accusedPlayerId: '',
+        accusedPlayerId: eliminatedPlayerId,
         updatedAt: new Date().toISOString(),
       });
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}`);
+  }
+}
 
-      // If first alive player is bot, trigger clue
-      if (isAutoControlledSeat(firstAlivePlayer, user.uid)) {
-        setTimeout(() => {
-          autoSimulateBotClue(roomId, firstAlivePlayer);
-        }, 1200);
-      }
+// U-9B. Advance from Round Elimination Verdict to Next Clue Round
+export async function advanceToNextUndercoverRound(
+  roomId: string
+): Promise<void> {
+  const user = await ensureAuthUser();
+  const roomRef = doc(db, 'rooms', roomId);
+
+  try {
+    const roomSnap = await getDoc(roomRef);
+    const roomData = roomSnap.data() as FirestoreRoom | undefined;
+    if (!roomData) return;
+
+    const playersSnap = await getDocs(
+      collection(db, 'rooms', roomId, 'players')
+    );
+    const allPlayers = playersSnap.docs.map((d) => d.data() as FirestorePlayer);
+    const eliminatedIds = roomData.undercoverEliminatedIds || [];
+
+    // Reset currentRoundClue and voteTargetId for next round
+    for (const p of allPlayers) {
+      await updateDoc(doc(db, 'rooms', roomId, 'players', p.id), {
+        currentRoundClue: '',
+        voteTargetId: '',
+      });
+    }
+
+    const orderedAlive = getOrderedAlivePlayers(
+      allPlayers,
+      roomData.undercoverTurnOrderIds,
+      eliminatedIds
+    );
+    const firstAlivePlayer = orderedAlive[0];
+    if (!firstAlivePlayer) return;
+
+    const nextRoundNumber = (roomData.undercoverRoundNumber || 1) + 1;
+    const duration = roomData.clueDurationSeconds || 45;
+    const deadline = new Date(Date.now() + duration * 1000).toISOString();
+
+    await updateDoc(roomRef, {
+      status: 'undercover_clue',
+      undercoverRoundVerdictPending: false,
+      undercoverRoundNumber: nextRoundNumber,
+      undercoverTurnIndex: 0,
+      undercoverTurnPlayerId: firstAlivePlayer.id,
+      undercoverTurnDeadline: deadline,
+      accusedPlayerId: '',
+      updatedAt: new Date().toISOString(),
+    });
+
+    // If first alive player is bot, trigger clue automatically
+    if (isAutoControlledSeat(firstAlivePlayer, user.uid)) {
+      setTimeout(() => {
+        autoSimulateBotClue(roomId, firstAlivePlayer);
+      }, 1200);
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}`);
@@ -698,7 +818,7 @@ async function processEliminationAndContinue(
 
 // U-10. Rematch Undercover Game
 export async function rematchUndercoverGame(roomId: string): Promise<void> {
-  const user = await ensureAuthUser();
+  await ensureAuthUser();
   const roomRef = doc(db, 'rooms', roomId);
 
   try {
@@ -722,10 +842,14 @@ export async function rematchUndercoverGame(roomId: string): Promise<void> {
       undercoverCivilianWord: '',
       undercoverSpyWord: '',
       mrWhitePlayerId: '',
+      undercoverTurnOrderIds: [],
       undercoverTurnIndex: 0,
       undercoverRoundNumber: 1,
       undercoverTurnPlayerId: '',
       undercoverEliminatedIds: [],
+      undercoverRoundVerdictPending: false,
+      undercoverLastEliminatedId: '',
+      undercoverLastEliminatedName: '',
       mrWhiteGuessedWord: '',
       mrWhiteGuessSuccess: false,
       undercoverHistory: [],

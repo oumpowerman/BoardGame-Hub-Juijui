@@ -28,6 +28,7 @@ import {
 } from '../../firebase/table/avalonService';
 import { UserProfile, RoomInviteDoc } from '../../firebase/userService';
 import { useAvalonGameMaster } from './useAvalonGameMaster';
+import { thaiGameMaster } from '../../utils/thaiGameMasterTTS';
 import { AvalonTopBar } from './AvalonTopBar';
 import { AvalonActiveRoomHeader } from './AvalonActiveRoomHeader';
 import { AvalonInvitesBanner } from './AvalonInvitesBanner';
@@ -75,8 +76,7 @@ export const AvalonScreen: React.FC<AvalonScreenProps> = ({
   const [isCreatingRoom, setIsCreatingRoom] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
-  // Sound & Audio effects Hook
-  const isGameOver = room?.status === 'avalon_scoring';
+  // Sound & Thai Game Master Voice Hook
   const {
     soundEnabled,
     setSoundEnabled,
@@ -86,7 +86,7 @@ export const AvalonScreen: React.FC<AvalonScreenProps> = ({
     playCardSuccessSound,
     playCardFailSound,
     playVoteCastSound,
-  } = useAvalonGameMaster(isGameOver);
+  } = useAvalonGameMaster(room, players);
 
   // Handle auto-join from URL parameter if code provided
   useEffect(() => {
@@ -416,6 +416,7 @@ export const AvalonScreen: React.FC<AvalonScreenProps> = ({
                 currentRoom={room}
                 soundEnabled={soundEnabled}
                 onToggleSound={() => setSoundEnabled(!soundEnabled)}
+                onTestVoice={() => thaiGameMaster.testAvalonVoice()}
                 onLeaveRoom={handleLeaveRoom}
                 onOpenInviteModal={onOpenFriendModal}
               />

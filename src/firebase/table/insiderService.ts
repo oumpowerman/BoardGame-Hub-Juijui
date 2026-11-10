@@ -90,11 +90,24 @@ export async function startInsiderGameAndDealRoles(
       });
     }
 
+    // Create randomized question-asking order for non-Master players (Fisher-Yates shuffle)
+    const nonMasterPlayerIds = players
+      .filter((_, idx) => roles[idx] !== 'insider_master')
+      .map((p) => p.id);
+    for (let i = nonMasterPlayerIds.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [nonMasterPlayerIds[i], nonMasterPlayerIds[j]] = [
+        nonMasterPlayerIds[j],
+        nonMasterPlayerIds[i],
+      ];
+    }
+
     await updateDoc(roomRef, {
       status: 'role_deal',
       secretWord: pickedWord.word,
       wordCategoryLabel: pickedWord.categoryLabel,
       insiderEyesOpen: false,
+      insiderTurnOrderIds: nonMasterPlayerIds,
       elapsedQuizSeconds: 0,
       guesserPlayerId: '',
       guesserPlayerName: '',

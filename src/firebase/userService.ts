@@ -18,6 +18,7 @@ import { db, handleFirestoreError, OperationType } from './config';
 export interface UserProfile {
   uid: string;
   accountName: string;
+  avatarUrl?: string;
   friendCode: string;
   friends: string[];
   createdAt: string;
@@ -341,3 +342,138 @@ export async function dismissRoomInvite(inviteId: string): Promise<void> {
     handleFirestoreError(error, OperationType.DELETE, `room_invites/${inviteId}`);
   }
 }
+
+// 13. Update User Profile Avatar (Photo or Preset Data URL)
+export async function updateUserAvatar(
+  uid: string,
+  avatarUrl: string
+): Promise<UserProfile | null> {
+  const userRef = doc(db, 'users', uid);
+  const path = `users/${uid}`;
+  try {
+    const now = new Date().toISOString();
+    await updateDoc(userRef, {
+      avatarUrl,
+      updatedAt: now,
+    });
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('tabletop_player_avatar', avatarUrl);
+    }
+    const snap = await getDoc(userRef);
+    if (!snap.exists()) return null;
+    return snap.data() as UserProfile;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+// 14. Instant Mutual Friend by FriendCode or UID (Used by QR Code & Instant Link)
+export async function addInstantMutualFriendByCodeOrUid(
+  myProfile: UserProfile,
+  codeOrUid: string
+): Promise<UserProfile> {
+  const clean = codeOrUid.trim();
+  if (!clean) {
+    throw new Error('ไม่พบรหัสเพื่อนจาก QR Code หรือลิงก์');
+  }
+
+  // Extract friend code if full URL was scanned
+  let extractedCode = clean;
+  try {
+    if (clean.includes('addFriend=')) {
+      const urlObj = new URL(clean, window.location.origin);
+      const param = urlObj.searchParams.get('addFriend');
+      if (param) extractedCode = param.trim();
+    }
+  } catch {
+    // Keep raw string
+  }
+
+  const matches = await findUsersByQuery(extractedCode, myProfile.uid);
+  const qLower = extractedCode.toLowerCase();
+  const targetUser =
+    matches.find(
+      (u) =>
+        u.friendCode.toLowerCase() === qLower ||
+        u.uid.toLowerCase() === qLower ||
+        u.accountName.toLowerCase() === qLower
+    ) || matches[0];
+
+  if (!targetUser) {
+    throw new Error(`ไม่พบบัญชีผู้ใช้จากรหัส "${extractedCode}"`);
+  }
+
+  if (targetUser.uid === myProfile.uid) {
+    throw new Error('ไม่สามารถแอดตัวเองเป็นเพื่อนได้');
+  }
+
+  const now = new Date().toISOString();
+  try {
+    await updateDoc(doc(db, 'users', myProfile.uid), {
+      friends: arrayUnion(targetUser.uid),
+      updatedAt: now,
+    });
+    await updateDoc(doc(db, 'users', targetUser.uid), {
+      friends: arrayUnion(myProfile.uid),
+      updatedAt: now,
+    });
+    return targetUser;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `users/${myProfile.uid}`);
+  }
+}
+
+// 15. Instant Mutual Friend from Same-Room Player Seat (1-Click Add in Lobby)
+export async function addInstantFriendFromRoomSeat(
+  myProfile: UserProfile,
+  seatPlayer: { id: string; name: string; avatarUrl?: string }
+): Promise<UserProfile> {
+  if (seatPlayer.id === myProfile.uid) {
+    throw new Error('ไม่สามารถแอดตัวเองเป็นเพื่อนได้');
+  }
+
+  const now = new Date().toISOString();
+  const targetRef = doc(db, 'users', seatPlayer.id);
+
+  try {
+    const targetSnap = await getDoc(targetRef);
+    let targetProfile: UserProfile;
+
+    if (targetSnap.exists()) {
+      const existing = targetSnap.data() as UserProfile;
+      await updateDoc(targetRef, {
+        friends: arrayUnion(myProfile.uid),
+        updatedAt: now,
+      });
+      targetProfile = {
+        ...existing,
+        friends: existing.friends.includes(myProfile.uid)
+          ? existing.friends
+          : [...existing.friends, myProfile.uid],
+      };
+    } else {
+      // Ensure target seat player has a UserProfile document
+      targetProfile = {
+        uid: seatPlayer.id,
+        accountName: seatPlayer.name.slice(0, 50),
+        ...(seatPlayer.avatarUrl ? { avatarUrl: seatPlayer.avatarUrl } : {}),
+        friendCode: generateFriendCode(seatPlayer.id),
+        friends: [myProfile.uid],
+        createdAt: now,
+        updatedAt: now,
+      };
+      await setDoc(targetRef, targetProfile);
+    }
+
+    await updateDoc(doc(db, 'users', myProfile.uid), {
+      friends: arrayUnion(seatPlayer.id),
+      updatedAt: now,
+    });
+
+    return targetProfile;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `users/${myProfile.uid}`);
+  }
+}
+
+

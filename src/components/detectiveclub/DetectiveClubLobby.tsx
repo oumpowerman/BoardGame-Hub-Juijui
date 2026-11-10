@@ -12,6 +12,10 @@ import {
 } from 'lucide-react';
 import { FirestoreRoom, FirestorePlayer } from '../../firebase/tableService';
 import { UserProfile } from '../../firebase/userService';
+import {
+  SameRoomQuickFriendBar,
+  SeatQuickAddFriendButton,
+} from '../friends/SameRoomQuickFriendBar';
 
 export interface DetectiveClubLobbyProps {
   currentRoom: FirestoreRoom;
@@ -146,65 +150,99 @@ export const DetectiveClubLobby: React.FC<DetectiveClubLobbyProps> = ({
         )}
       </div>
 
-      {/* Lobby Settings Card */}
+      {/* Lobby Settings & Hybrid Play Guide Card */}
       <div className="bg-white border border-amber-200 rounded-3xl p-5 space-y-4 shadow-xs">
-        <div className="flex items-center justify-between border-b border-amber-100 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-100 pb-3">
           <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
             <Shield className="w-4 h-4 text-amber-600" />
-            <span>กติกาการเล่นคู่กับไพ่จริง (In-Person Companion Rules)</span>
+            <span>วิธีเล่นแบบผสมผสาน: ไพ่รูปภาพจริงบนโต๊ะ + แอปมือถือดำเนินเกม</span>
           </h3>
           {!isHost && (
             <span className="text-xs text-slate-500">
-              (เฉพาะโฮสต์ที่ปรับแต่งได้)
+              (เฉพาะโฮสต์ที่ปรับเวลาได้)
             </span>
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          {/* Rule 1: Secret Notebook Concept */}
-          <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-2">
-            <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <BookOpen className="w-4 h-4 text-amber-600" />
-              <span>ระบบแจกสมุดบันทึกลับดิจิทัล</span>
+        {/* Physical vs Digital Split Guide */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-300 space-y-2">
+            <div className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+              <span className="px-2 py-0.5 bg-amber-400 text-amber-950 rounded-md">
+                🃏 สิ่งที่ใช้บนโต๊ะจริง
+              </span>
+              <span>ใช้เฉพาะไพ่รูปภาพ (Evidence Cards)</span>
             </div>
-            <p className="text-[11px] text-slate-600 leading-relaxed">
-              ผู้ตั้งโจทย์จะพิมพ์คำลับในมือถือ จากนั้นระบบจะส่งคำลับไปที่เครื่องของนักสืบทุกคนอัตโนมัติ โดยมีผู้สมรู้ร่วมคิด (Conspirator) 1 คนที่ได้สมุดว่างเปล่า! ไม่ต้องพกสมุดโน้ตจริงและดินสอ
-            </p>
+            <ul className="text-[11px] text-slate-700 space-y-1 list-disc list-inside leading-relaxed">
+              <li>
+                <strong>ก่อนเริ่มเกม:</strong> สับกองไพ่รูปภาพจริง แล้วแจกให้ผู้เล่นทุกคนถือในมือคนละ <strong>6 ใบ</strong> (ห้ามให้คนอื่นเห็นไพ่ในมือ)
+              </li>
+              <li>
+                <strong>ระหว่างเล่น:</strong> หงายไพ่รูปภาพจากมือลงบนโต๊ะหน้าตัวเองคนละ 2 ใบตามคิวที่แอปเรียก แล้วชี้ไพ่บนโต๊ะเพื่อเล่าเหตุผล
+              </li>
+            </ul>
           </div>
 
-          {/* Rule 2: Discussion Timer Duration */}
-          <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-2">
-            <div className="text-xs font-bold text-slate-800">
-              เวลาถกเถียง & อธิบายการ์ด
+          <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2">
+            <div className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+              <span className="px-2 py-0.5 bg-emerald-600 text-white rounded-md">
+                📱 สิ่งที่แอปทำแทนให้ทั้งหมด
+              </span>
+              <span>ไม่ต้องใช้สมุดจริงหรือโทเคนโหวต</span>
             </div>
-            <p className="text-[11px] text-slate-600">
-              เวลานับถอยหลังช่วงให้ทุกคนอธิบายเหตุผลว่าการ์ด 2 ใบเชื่อมโยงกับคำลับอย่างไร
-            </p>
-            {isHost ? (
-              <div className="flex items-center gap-1.5">
-                {[60, 90, 120].map((sec) => (
-                  <button
-                    key={sec}
-                    type="button"
-                    onClick={() => onSelectDiscussionDuration(sec)}
-                    className={`flex-1 py-1.5 rounded-xl text-xs font-mono font-extrabold border transition-colors cursor-pointer ${
-                      discussionDurationSeconds === sec
-                        ? 'bg-amber-400 border-amber-500 text-amber-950 font-black'
-                        : 'bg-white border-amber-200 text-slate-700 hover:bg-amber-50'
-                    }`}
-                  >
-                    {sec}s
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="text-xs font-mono font-bold text-amber-950 bg-white px-3 py-2 rounded-xl border border-amber-200">
-                {discussionDurationSeconds} วินาที
-              </div>
-            )}
+            <ul className="text-[11px] text-slate-700 space-y-1 list-disc list-inside leading-relaxed">
+              <li>
+                <strong>สมุดโน้ตลับดิจิทัล:</strong> ผู้ตั้งโจทย์พิมพ์คำลับในแอป ระบบส่งคำลับให้นักสืบทุกคน และส่ง <strong>หน้ากระดาษว่างเปล่า</strong> ให้ Conspirator 1 คนอัตโนมัติ
+              </li>
+              <li>
+                <strong>รันคิว + โหวต + คิดแต้ม:</strong> แอปขานชื่อคิววางไพ่ โหวตจับคนเนียนในมือถือ และคำนวณแต้ม (+3 / +4 / +5 VP) ให้ทันที
+              </li>
+            </ul>
           </div>
         </div>
+
+        {/* Discussion Timer Selector */}
+        <div className="p-4 rounded-2xl bg-stone-50 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <BookOpen className="w-4 h-4 text-amber-600" />
+              <span>เวลาถกเถียง & อธิบายเหตุผลของไพ่ 2 ใบ</span>
+            </div>
+            <p className="text-[11px] text-slate-600">
+              เวลานับถอยหลังช่วงให้แต่ละคนอธิบายว่าไพ่ 2 ใบหน้าตัวเองเกี่ยวกับคำศัพท์ลับอย่างไร
+            </p>
+          </div>
+          {isHost ? (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {[60, 90, 120].map((sec) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => onSelectDiscussionDuration(sec)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-extrabold border transition-colors cursor-pointer ${
+                    discussionDurationSeconds === sec
+                      ? 'bg-amber-400 border-amber-500 text-amber-950 font-black'
+                      : 'bg-white border-amber-200 text-slate-700 hover:bg-amber-50'
+                  }`}
+                >
+                  {sec}s
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs font-mono font-bold text-amber-950 bg-white px-3 py-2 rounded-xl border border-amber-200 shrink-0">
+              {discussionDurationSeconds} วินาที
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Same-Room 1-Click Add Friends Strip */}
+      <SameRoomQuickFriendBar
+        players={players}
+        currentUid={currentUser.uid}
+        friends={friends}
+      />
 
       {/* Player Seats Grid */}
       <div className="bg-white border border-amber-200 rounded-3xl p-5 space-y-4 shadow-xs">
@@ -263,6 +301,11 @@ export const DetectiveClubLobby: React.FC<DetectiveClubLobbyProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
+                  <SeatQuickAddFriendButton
+                    seatPlayer={p}
+                    currentUid={currentUser.uid}
+                    friends={friends}
+                  />
                   <span
                     className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${
                       p.isReady

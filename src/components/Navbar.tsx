@@ -382,6 +382,29 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 3: Account, Friends & Primary Action */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {/* User Profile Avatar Pill */}
+          <button
+            type="button"
+            onClick={onOpenFriendModal}
+            className="inline-flex items-center gap-1.5 p-1 sm:px-2.5 sm:py-1 bg-amber-50 hover:bg-amber-100/80 border border-amber-200/90 rounded-xl transition-all cursor-pointer shadow-2xs shrink-0"
+            title={`โปรไฟล์: ${currentUser.accountName} (คลิกเพื่อเปลี่ยนรูป/ชื่อ)`}
+          >
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-200 border border-amber-300 flex items-center justify-center font-bold text-amber-950 text-xs overflow-hidden shadow-2xs shrink-0">
+              {currentUser.avatarUrl ? (
+                <img
+                  src={currentUser.avatarUrl}
+                  alt={currentUser.accountName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                currentUser.accountName.slice(0, 2).toUpperCase()
+              )}
+            </div>
+            <span className="hidden sm:inline text-xs font-black text-amber-950 truncate max-w-[90px]">
+              {currentUser.accountName}
+            </span>
+          </button>
+
           <button
             type="button"
             onClick={onOpenFriendModal}

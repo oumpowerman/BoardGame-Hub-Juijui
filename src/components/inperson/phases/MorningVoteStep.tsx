@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Sun, Clock, Sparkles, Vote } from 'lucide-react';
 import { FirestorePlayer } from '../../../firebase/tableService';
 import { getCheeseThiefRoleDetails } from './phaseUtils';
+import { InGameRolePrivacyBar } from '../../common/InGameRolePrivacyBar';
 
 interface MorningVoteStepProps {
   players: FirestorePlayer[];
@@ -63,44 +64,51 @@ export const MorningVoteStep: React.FC<MorningVoteStepProps> = ({
         </div>
       </div>
 
-      {/* Player's Night Clue Notebook */}
-      <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl text-xs space-y-1.5">
-        <div className="font-extrabold text-amber-950 flex items-center gap-1.5">
-          <Sparkles className="w-4 h-4 text-amber-600" />
-          <span>บันทึกเบาะแสส่วนตัวของคุณเมื่อคืน ({roleDetails.titleTh}):</span>
+      {/* Player's Night Clue Notebook Protected by In-Game Role Privacy Shield */}
+      <InGameRolePrivacyBar
+        roleTitle={roleDetails.titleTh}
+        roleEmoji={roleDetails.emoji}
+        secretWordLabel="เวลาตื่นตามหน้าเต๋าของคุณ"
+        secretWordValue={`ตี ${myWakeHour}:00 น.${
+          mySecondHour > 0 ? ` (เต๋าลูกที่ 2: ตี ${mySecondHour}:00 น.)` : ''
+        }`}
+        extraHint="ซ่อนบทบาทและบันทึกเบาะแสเมื่อคืนไว้ไม่ให้เพื่อนข้างๆ แอบมองจอ"
+        accentTheme="amber"
+      >
+        <div className="p-3 bg-white/90 border border-amber-200 rounded-xl text-xs space-y-1.5">
+          <div className="font-extrabold text-amber-950 flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-amber-600" />
+            <span>บันทึกเบาะแสส่วนตัวของคุณเมื่อคืน:</span>
+          </div>
+          <ul className="list-disc list-inside text-slate-700 space-y-1">
+            <li>
+              ผู้ที่ลืมตาตื่นพร้อมคุณ:{' '}
+              <strong>
+                {coAwakeInMyPrimaryHour.length > 0
+                  ? coAwakeInMyPrimaryHour.map((p) => p.name).join(', ')
+                  : 'ไม่มี (คุณตื่นคนเดียว)'}
+              </strong>
+            </li>
+            {myPlayer?.peekedTargetName && (
+              <li className="text-emerald-800 font-bold">
+                🔍 ผลจากการแอบส่องถ้วยเต๋าของ {myPlayer.peekedTargetName}:
+                เลขเต๋าใต้ถ้วยคือ{' '}
+                <span className="underline">
+                  ตี {myPlayer.peekedDiceValue}:00 น.
+                </span>
+                !
+              </li>
+            )}
+            {myPlayer?.isFollower && (
+              <li className="text-rose-800 font-bold">
+                🕵️ คุณคือลูกน้อง (Follower)! ห้ามบอกข้อมูลเต๋าช่วงกลางคืน
+                แต่จงช่วยปั้นแพะให้คนอื่นโหวตผิดคน (แม้ลูกน้องโดนโหวตแทน
+                จอมโจรและลูกน้องก็ยังชนะด้วยกัน!)
+              </li>
+            )}
+          </ul>
         </div>
-        <ul className="list-disc list-inside text-slate-700 space-y-1">
-          <li>
-            เลขเต๋าเวลาตื่นของคุณ: <strong>ตี {myWakeHour}:00 น.</strong>
-            {mySecondHour > 0 ? ` (เต๋าลูกที่ 2: ตี ${mySecondHour}:00 น.)` : ''}
-          </li>
-          <li>
-            ผู้ที่ลืมตาตื่นพร้อมคุณ:{' '}
-            <strong>
-              {coAwakeInMyPrimaryHour.length > 0
-                ? coAwakeInMyPrimaryHour.map((p) => p.name).join(', ')
-                : 'ไม่มี (คุณตื่นคนเดียว)'}
-            </strong>
-          </li>
-          {myPlayer?.peekedTargetName && (
-            <li className="text-emerald-800 font-bold">
-              🔍 ผลจากการแอบส่องถ้วยเต๋าของ {myPlayer.peekedTargetName}:
-              เลขเต๋าใต้ถ้วยคือ{' '}
-              <span className="underline">
-                ตี {myPlayer.peekedDiceValue}:00 น.
-              </span>
-              !
-            </li>
-          )}
-          {myPlayer?.isFollower && (
-            <li className="text-rose-800 font-bold">
-              🕵️ คุณคือลูกน้อง (Follower)! ห้ามบอกข้อมูลเต๋าช่วงกลางคืน
-              แต่จงช่วยปั้นแพะให้คนอื่นโหวตผิดคน (แม้ลูกน้องโดนโหวตแทน
-              จอมโจรและลูกน้องก็ยังชนะด้วยกัน!)
-            </li>
-          )}
-        </ul>
-      </div>
+      </InGameRolePrivacyBar>
 
       <div className="p-4 sm:p-5 bg-white border border-rose-100 rounded-3xl shadow-xs space-y-3">
         <div className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
@@ -119,15 +127,24 @@ export const MorningVoteStep: React.FC<MorningVoteStepProps> = ({
                 key={p.id}
                 type="button"
                 onClick={() => onSelectVoteTarget(p.id)}
-                className={`w-full p-3.5 rounded-2xl border text-left font-semibold text-sm transition-all cursor-pointer flex items-center justify-between min-h-[48px] ${
+                className={`w-full p-3 rounded-2xl border text-left font-semibold text-sm transition-all cursor-pointer flex items-center justify-between min-h-[48px] ${
                   selectedVoteTarget === p.id
                     ? 'bg-rose-50 border-rose-400 text-rose-900 font-bold shadow-xs'
                     : 'bg-slate-50/50 hover:bg-slate-100/60 border-slate-200 text-slate-800'
                 }`}
               >
-                <span>{p.name}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center font-bold text-amber-900 text-xs shrink-0 overflow-hidden shadow-2xs">
+                    {p.avatarUrl ? (
+                      <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      p.name.slice(0, 2).toUpperCase()
+                    )}
+                  </div>
+                  <span className="truncate">{p.name}</span>
+                </div>
                 {selectedVoteTarget === p.id && (
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500 text-white font-bold">
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500 text-white font-bold shrink-0">
                     ชี้โหวตคนนี้
                   </span>
                 )}

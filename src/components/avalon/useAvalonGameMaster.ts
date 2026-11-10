@@ -1,13 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
+import { FirestoreRoom, FirestorePlayer } from '../../firebase/tableService';
+import { AVALON_QUEST_MATRIX } from '../../data/avalonRules';
+import { thaiGameMaster } from '../../utils/thaiGameMasterTTS';
 
-export function useAvalonGameMaster(isGameOver: boolean = false) {
+export function useAvalonGameMaster(
+  room?: FirestoreRoom | null,
+  players: FirestorePlayer[] = []
+) {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const prevStatusRef = useRef<string | undefined>(undefined);
+  const prevLeaderKeyRef = useRef<string>('');
+  const prevQuestResultsLenRef = useRef<number>(0);
+
+  const isGameOver = room?.status === 'avalon_scoring';
+
+  useEffect(() => {
+    thaiGameMaster.setEnabled(soundEnabled);
+  }, [soundEnabled]);
 
   const initAudio = () => {
     if (!audioCtxRef.current && typeof window !== 'undefined') {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         audioCtxRef.current = new AudioCtx();
       }
@@ -78,6 +95,85 @@ export function useAvalonGameMaster(isGameOver: boolean = false) {
     setTimeout(() => playTone(783.99, 0.15), 300);
     setTimeout(() => playTone(1046.5, 0.4), 450);
   };
+
+  // Trigger Thai AI Game Master Voice Narration on Avalon Phase Transitions
+  useEffect(() => {
+    if (!room || !soundEnabled) return;
+
+    const status = room.status;
+    const questIndex = room.avalonCurrentQuestIndex || 0;
+    const questNumber = questIndex + 1;
+    const totalPlayers = Math.min(10, Math.max(5, players.length || 5));
+    const matrix = AVALON_QUEST_MATRIX[totalPlayers] || AVALON_QUEST_MATRIX[5];
+    const currentQuestReq = matrix.quests[questIndex] || matrix.quests[0];
+
+    // Check if a quest result just completed
+    const currentResults = room.avalonQuestResults || [];
+    if (currentResults.length > prevQuestResultsLenRef.current && prevQuestResultsLenRef.current >= 0) {
+      if (prevStatusRef.current && prevStatusRef.current !== 'lobby') {
+        const latest = currentResults[currentResults.length - 1];
+        if (latest) {
+          thaiGameMaster.speakAvalonQuestResult(
+            latest.questIndex + 1,
+            latest.passed,
+            latest.failCount
+          );
+        }
+      }
+    }
+    prevQuestResultsLenRef.current = currentResults.length;
+
+    // Phase-level transitions
+    if (status !== prevStatusRef.current) {
+      prevStatusRef.current = status;
+
+      if (status === 'avalon_role_reveal') {
+        thaiGameMaster.speakAvalonRoleDeal();
+      } else if (status === 'avalon_team_vote') {
+        thaiGameMaster.speakAvalonTeamVote(questNumber);
+      } else if (status === 'avalon_quest_vote') {
+        thaiGameMaster.speakAvalonQuestVote(questNumber);
+      } else if (status === 'avalon_assassination') {
+        thaiGameMaster.speakAvalonAssassination();
+      } else if (status === 'avalon_scoring') {
+        thaiGameMaster.speakAvalonGameOver(
+          room.winnerTeam || 'good',
+          Boolean(room.avalonAssassinationSuccess)
+        );
+      }
+    }
+
+    // Team Selection leader / quest change narration
+    if (status === 'avalon_team_selection') {
+      const leaderId = room.avalonLeaderId || '';
+      const leaderKey = `${questNumber}_${leaderId}_${room.avalonRejectedTeamsCount || 0}`;
+      if (leaderId && leaderKey !== prevLeaderKeyRef.current) {
+        prevLeaderKeyRef.current = leaderKey;
+        const leaderName =
+          players.find((p) => p.id === leaderId)?.name || 'หัวหน้าอัศวิน';
+        // Slight delay if a quest result just played so it doesn't cut off immediately
+        const delayMs = currentResults.length > 0 && status === prevStatusRef.current ? 3200 : 150;
+        const timer = setTimeout(() => {
+          thaiGameMaster.speakAvalonTeamSelection(
+            questNumber,
+            leaderName,
+            currentQuestReq.teamSize
+          );
+        }, delayMs);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [
+    room?.status,
+    room?.avalonCurrentQuestIndex,
+    room?.avalonLeaderId,
+    room?.avalonRejectedTeamsCount,
+    room?.avalonQuestResults?.length,
+    room?.winnerTeam,
+    room?.avalonAssassinationSuccess,
+    players,
+    soundEnabled,
+  ]);
 
   useEffect(() => {
     if (isGameOver) {

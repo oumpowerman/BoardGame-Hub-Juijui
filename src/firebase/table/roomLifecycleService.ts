@@ -121,9 +121,11 @@ export async function createTableRoom(
   try {
     await setDoc(doc(db, 'rooms', roomId), roomData);
 
+    const storedAvatar = typeof window !== 'undefined' ? localStorage.getItem('tabletop_player_avatar') || undefined : undefined;
     const playerData: FirestorePlayer = {
       id: user.uid,
       name: cleanHost,
+      ...(storedAvatar ? { avatarUrl: storedAvatar } : {}),
       isHost: true,
       isReady: true,
       joinedAt: new Date().toISOString(),
@@ -162,10 +164,16 @@ export async function findRoomByCode(
 // 3. Join Table Room by Room ID
 export async function joinTableRoom(
   roomId: string,
-  playerName: string
+  playerName: string,
+  avatarUrl?: string
 ): Promise<FirestorePlayer> {
   const user = await ensureAuthUser();
   const playerPath = `rooms/${roomId}/players/${user.uid}`;
+  const effectiveAvatar =
+    avatarUrl ||
+    (typeof window !== 'undefined'
+      ? localStorage.getItem('tabletop_player_avatar') || undefined
+      : undefined);
 
   try {
     const playerDoc = await getDoc(
@@ -174,16 +182,17 @@ export async function joinTableRoom(
     if (playerDoc.exists()) {
       const existing = playerDoc.data() as FirestorePlayer;
       const updatedName = playerName.trim() || existing.name;
-      await updateDoc(doc(db, 'rooms', roomId, 'players', user.uid), {
-        name: updatedName,
-      });
+      const updates: Partial<FirestorePlayer> = { name: updatedName };
+      if (effectiveAvatar) updates.avatarUrl = effectiveAvatar;
+      await updateDoc(doc(db, 'rooms', roomId, 'players', user.uid), updates);
       await syncRoomPlayerCount(roomId);
-      return { ...existing, name: updatedName };
+      return { ...existing, name: updatedName, ...(effectiveAvatar ? { avatarUrl: effectiveAvatar } : {}) };
     }
 
     const playerData: FirestorePlayer = {
       id: user.uid,
       name: playerName.trim() || `ผู้เล่น ${user.uid.slice(0, 4)}`,
+      ...(effectiveAvatar ? { avatarUrl: effectiveAvatar } : {}),
       isHost: false,
       isReady: true,
       joinedAt: new Date().toISOString(),
@@ -207,6 +216,7 @@ export async function addFriendToRoomSeat(
     const friendPlayer: FirestorePlayer = {
       id: friend.uid,
       name: friend.accountName,
+      ...(friend.avatarUrl ? { avatarUrl: friend.avatarUrl } : {}),
       isHost: false,
       isReady: true,
       isFriendSeat: true,
@@ -409,3 +419,18 @@ export function listenToRoomPlayers(
     }
   );
 }
+
+// 13. Update Player Avatar in Room Seats
+export async function updatePlayerAvatarInRoom(
+  roomId: string,
+  playerId: string,
+  avatarUrl: string
+): Promise<void> {
+  const playerRef = doc(db, 'rooms', roomId, 'players', playerId);
+  try {
+    await updateDoc(playerRef, { avatarUrl });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}/players/${playerId}`);
+  }
+}
+

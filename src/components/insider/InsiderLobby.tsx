@@ -19,6 +19,10 @@ import {
   ALL_INSIDER_CATEGORY_OPTIONS,
   InsiderWordCategoryId,
 } from '../../data/insiderWords';
+import {
+  SameRoomQuickFriendBar,
+  SeatQuickAddFriendButton,
+} from '../friends/SameRoomQuickFriendBar';
 
 interface InsiderLobbyProps {
   activeRoom: FirestoreRoom;
@@ -253,7 +257,61 @@ export const InsiderLobby: React.FC<InsiderLobbyProps> = ({
             />
           </div>
         </div>
+
+        {/* Gemini AI Word Generator Sub-panel */}
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-pink-50 to-amber-50 border border-rose-200 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-extrabold text-rose-950">
+              <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+              <span>สร้างคำศัพท์ลับ Insider สดใหม่ด้วย Gemini 3.8 Flash</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <input
+              type="text"
+              id="insider-ai-topic"
+              placeholder="ระบุธีมหรือหัวข้อที่อยากให้ AI คิด (เช่น คาเฟ่, บอร์ดเกม, สัตว์แปลกๆ) หรือปล่อยว่าง..."
+              className="w-full sm:flex-1 px-3.5 py-2 bg-white border border-rose-200 focus:border-rose-400 rounded-xl text-xs font-semibold text-slate-900 placeholder-slate-400 outline-none"
+            />
+            <button
+              type="button"
+              onClick={async () => {
+                const inputEl = document.getElementById(
+                  'insider-ai-topic'
+                ) as HTMLInputElement;
+                const prompt = inputEl?.value || '';
+                const cat = activeRoom.wordCategory || 'all';
+                try {
+                  const res = await fetch('/api/insider/generate-word', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ category: cat, themePrompt: prompt }),
+                  });
+                  if (!res.ok) throw new Error('API error');
+                  const data = await res.json();
+                  if (data.word) {
+                    onCustomLobbyWordChange(data.word);
+                  }
+                } catch {
+                  // Fallback
+                }
+              }}
+              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>ให้ Gemini คิดคำลับ</span>
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Same-Room 1-Click Add Friends Strip */}
+      <SameRoomQuickFriendBar
+        players={players}
+        currentUid={currentUser.uid}
+        friends={friends}
+      />
 
       {/* Players Seat List */}
       <div className="p-4 sm:p-5 bg-white border border-rose-200 rounded-3xl space-y-4">
@@ -307,6 +365,11 @@ export const InsiderLobby: React.FC<InsiderLobbyProps> = ({
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
+                <SeatQuickAddFriendButton
+                  seatPlayer={p}
+                  currentUid={currentUser.uid}
+                  friends={friends}
+                />
                 <span
                   className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${
                     p.isReady

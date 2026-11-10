@@ -21,6 +21,7 @@ import {
 } from './src/types/boardgame';
 import { GoogleGenAI, Type } from '@google/genai';
 import { getRandomUndercoverWordPair } from './src/data/undercoverWords';
+import { getRandomInsiderWord } from './src/data/insiderWords';
 import { applyMatchResultToLeaderboard } from './src/utils/gameLogic';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -409,6 +410,51 @@ async function startServer() {
       console.error('Failed to generate Undercover words with Gemini:', err);
       const fallback = getRandomUndercoverWordPair();
       return res.json(fallback);
+    }
+  });
+
+  app.post('/api/insider/generate-word', async (req, res) => {
+    const { category, themePrompt } = req.body || {};
+    try {
+      const prompt = `คุณคือผู้เชี่ยวชาญการคิดคำศัพท์สำหรับปาร์ตี้บอร์ดเกม Insider (จอมบงการคำใบ้) ภาษาไทย
+ให้สร้างคำศัพท์ลับภาษาไทย 1 คำ ที่น่าสนใจ ท้าทาย และเหมาะสำหรับการเล่นทายคำถาม ใช่/ไม่ใช่
+- หมวดหมู่หรือธีมที่ต้องการ: ${themePrompt || category || 'อาหาร, สิ่งของ, สถานที่, สัตว์, วัฒนธรรมปาร์ตี้'}
+ตอบกลับเฉพาะ JSON ตาม schema: word (คำศัพท์ 1 คำ), categoryLabel (ชื่อหมวดหมู่), hint (คำใบ้สั้นๆ 1 ประโยค)`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              word: { type: Type.STRING },
+              categoryLabel: { type: Type.STRING },
+              hint: { type: Type.STRING },
+            },
+            required: ['word', 'categoryLabel', 'hint'],
+          },
+        },
+      });
+
+      const parsed = JSON.parse(response.text || '{}');
+      if (parsed.word) {
+        return res.json({
+          word: parsed.word,
+          categoryLabel: parsed.categoryLabel || 'AI เจเนอเรต (Gemini Flash)',
+          hint: parsed.hint || '',
+        });
+      }
+      throw new Error('Incomplete JSON');
+    } catch (err) {
+      console.error('Failed to generate Insider word with Gemini:', err);
+      const fallback = getRandomInsiderWord(category || 'all');
+      return res.json({
+        word: fallback.word,
+        categoryLabel: fallback.categoryLabel,
+        hint: '',
+      });
     }
   });
 

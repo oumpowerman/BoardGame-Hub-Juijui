@@ -37,6 +37,7 @@ import {
   addFriendToRoomSeat,
   cleanupHostPreviousRooms,
   leaveOrCloseTableRoom,
+  updatePlayerAvatarInRoom,
 } from '../../firebase/tableService';
 import {
   UserProfile,
@@ -187,13 +188,26 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
 
     const unsubPlayers = listenToRoomPlayers(selectedRoomId, (updatedPlayers) => {
       setPlayers(updatedPlayers);
+      // Auto-sync player avatar to room seat if available
+      const meInRoom = updatedPlayers.find((p) => p.id === currentUser.uid);
+      if (
+        meInRoom &&
+        currentUser.avatarUrl &&
+        meInRoom.avatarUrl !== currentUser.avatarUrl
+      ) {
+        updatePlayerAvatarInRoom(
+          selectedRoomId,
+          currentUser.uid,
+          currentUser.avatarUrl
+        ).catch(() => {});
+      }
     });
 
     return () => {
       unsubRoom();
       unsubPlayers();
     };
-  }, [selectedRoomId]);
+  }, [selectedRoomId, currentUser.uid, currentUser.avatarUrl]);
 
   // Create Room with Transition
   const handleCreateRoom = async () => {

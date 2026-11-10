@@ -20,6 +20,10 @@ import {
 } from 'lucide-react';
 import { FirestoreRoom, FirestorePlayer } from '../../firebase/tableService';
 import { UserProfile } from '../../firebase/userService';
+import {
+  SameRoomQuickFriendBar,
+  SeatQuickAddFriendButton,
+} from '../friends/SameRoomQuickFriendBar';
 
 interface InPersonLobbyProps {
   currentRoom: FirestoreRoom | null;
@@ -456,6 +460,13 @@ export const InPersonLobby: React.FC<InPersonLobbyProps> = ({
         )}
       </div>
 
+      {/* Same-Room 1-Click Add Friends Strip */}
+      <SameRoomQuickFriendBar
+        players={players}
+        currentUid={currentUid}
+        friends={friends}
+      />
+
       {/* Seated Players Grid (4 to 8 Players) */}
       <div className="p-4 sm:p-5 bg-white border border-amber-100 rounded-3xl shadow-xs space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-amber-100">
@@ -486,15 +497,44 @@ export const InPersonLobby: React.FC<InPersonLobbyProps> = ({
                   : 'bg-slate-50/60 border-slate-200 text-slate-700'
               }`}
             >
-              <div className="flex items-center gap-2 truncate">
-                <span className="w-6 h-6 rounded-full bg-white border flex items-center justify-center font-mono text-xs text-slate-600 shrink-0">
-                  #{idx + 1}
-                </span>
-                <span className="truncate">
-                  {p.name} {p.id === currentUid && '(คุณ)'}
-                </span>
+              <div className="flex items-center gap-2.5 truncate">
+                <div className="relative shrink-0">
+                  {p.avatarUrl ? (
+                    <img
+                      src={p.avatarUrl}
+                      alt={p.name}
+                      className="w-8 h-8 rounded-full object-cover border border-amber-300 shadow-2xs"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center font-bold text-amber-900 text-xs shadow-2xs">
+                      {p.name.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white border border-slate-300 flex items-center justify-center font-mono text-[9px] text-slate-700 shadow-2xs font-bold">
+                    {idx + 1}
+                  </span>
+                </div>
+                <div className="truncate">
+                  <div className="truncate font-bold">
+                    {p.name} {p.id === currentUid && '(คุณ)'}
+                  </div>
+                  {p.id === currentUid && onOpenFriendModal && (
+                    <button
+                      type="button"
+                      onClick={onOpenFriendModal}
+                      className="text-[10px] text-amber-800 hover:underline font-semibold cursor-pointer"
+                    >
+                      เปลี่ยนรูปถ่าย 📷
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
+                <SeatQuickAddFriendButton
+                  seatPlayer={p}
+                  currentUid={currentUid}
+                  friends={friends}
+                />
                 {p.isHost && (
                   <span className="px-2 py-0.5 text-[10px] bg-amber-200 text-amber-900 rounded-md font-bold">
                     โฮสต์

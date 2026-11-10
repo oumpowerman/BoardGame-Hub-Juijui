@@ -35,6 +35,7 @@ import {
   submitUndercoverClue,
   submitUndercoverVote,
   submitMrWhiteGuess,
+  advanceToNextUndercoverRound,
   rematchUndercoverGame,
 } from '../../firebase/tableService';
 import {
@@ -48,6 +49,8 @@ import {
   UndercoverWordPair,
 } from '../../data/undercoverWords';
 import { tableAudio } from '../../utils/tableAudio';
+import { thaiGameMaster } from '../../utils/thaiGameMasterTTS';
+import { useUndercoverGameMaster } from './useUndercoverGameMaster';
 
 export interface UndercoverScreenProps {
   currentUser: UserProfile;
@@ -124,6 +127,13 @@ export const UndercoverScreen: React.FC<UndercoverScreenProps> = ({
     runLeaveRoomTransition,
     runStartGameTransition,
   } = useRoomTransition('undercover');
+
+  // Thai Game Master Voice Narration Hook
+  useUndercoverGameMaster({
+    currentRoom,
+    players,
+    soundEnabled,
+  });
 
   // Lobby Settings Local States
   const [enableMrWhite, setEnableMrWhite] = useState<boolean>(true);
@@ -528,6 +538,19 @@ export const UndercoverScreen: React.FC<UndercoverScreenProps> = ({
     }
   };
 
+  const handleAdvanceNextRound = async () => {
+    if (!currentRoom) return;
+    setIsLoading(true);
+    try {
+      await advanceToNextUndercoverRound(currentRoom.id);
+      if (soundEnabled) tableAudio.playMorningGong();
+    } catch {
+      // Ignore
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleRematch = async () => {
     if (!currentRoom || !isHost) return;
     setIsLoading(true);
@@ -642,7 +665,12 @@ export const UndercoverScreen: React.FC<UndercoverScreenProps> = ({
                 hostName={currentRoom.hostName}
                 isHost={isHost}
                 soundEnabled={soundEnabled}
-                onToggleSound={() => setSoundEnabled((prev) => !prev)}
+                onToggleSound={() => {
+                  const next = !soundEnabled;
+                  setSoundEnabled(next);
+                  thaiGameMaster.setEnabled(next);
+                }}
+                onTestVoice={() => thaiGameMaster.testUndercoverVoice()}
                 onOpenShareModal={() => setIsShareModalOpen(true)}
                 onLeaveRoom={handleLeaveRoom}
               />
@@ -721,6 +749,7 @@ export const UndercoverScreen: React.FC<UndercoverScreenProps> = ({
                       onSubmitClue={handleSubmitClue}
                       onSubmitVote={handleSubmitVote}
                       onSubmitMrWhiteGuess={handleSubmitMrWhiteGuess}
+                      onAdvanceNextRound={handleAdvanceNextRound}
                       onRematch={handleRematch}
                     />
                   </motion.div>

@@ -12,6 +12,7 @@ import {
   Flame,
   Shield,
   Target,
+  Volume2,
 } from 'lucide-react';
 import {
   FirestoreRoom,
@@ -20,6 +21,7 @@ import {
   AvalonQuestResult,
 } from '../../firebase/tableService';
 import { AVALON_QUEST_MATRIX, AVALON_ROLES_META } from '../../data/avalonRules';
+import { thaiGameMaster } from '../../utils/thaiGameMasterTTS';
 import { AvalonQuestTracker } from './AvalonQuestTracker';
 import { AvalonRoleCard3D } from './AvalonRoleCard3D';
 import { AvalonQuestRevealModal } from './AvalonQuestRevealModal';
@@ -194,8 +196,26 @@ export const AvalonPhases: React.FC<AvalonPhasesProps> = ({
             initial="initial"
             animate="animate"
             exit="exit"
-            className="space-y-6 max-w-xl mx-auto"
+            className="space-y-4 max-w-xl mx-auto"
           >
+            {/* Optional Tabletop Night Script Voice Button */}
+            <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+              <div className="text-xs text-amber-900">
+                <span className="font-black block">🎭 โหมดพากย์เสียงหลับตา-ลืมตาที่โต๊ะจริง</span>
+                <span className="text-amber-700">
+                  กดเพื่อให้ AI Game Master ขานบทหลับตา-ชูนิ้วโป้งให้เมอร์ลินและเพอร์ซิวาลส่องที่โต๊ะ
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => thaiGameMaster.speakAvalonTabletopNightScript()}
+                className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl inline-flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+              >
+                <Volume2 className="w-4 h-4" />
+                <span>ให้ GM ขานบทหลับตา</span>
+              </button>
+            </div>
+
             <AvalonRoleCard3D
               myPlayer={myPlayer}
               roleMeta={roleMeta}

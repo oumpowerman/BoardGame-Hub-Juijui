@@ -20,14 +20,72 @@ import {
 import { recordGameEloUpdates } from './leaderboardService';
 
 /**
+ * Helper: Build turn order starting with the Active Player (Informer) at index 0,
+ * followed by the remaining players in a randomized table order.
+ */
+function buildDetectiveTurnOrder(
+  players: FirestorePlayer[],
+  activePlayerId: string
+): string[] {
+  const others = players
+    .filter((p) => p.id !== activePlayerId)
+    .map((p) => p.id)
+    .sort(() => Math.random() - 0.5);
+  return [activePlayerId, ...others];
+}
+
+/**
+ * Helper: Auto-advance through any bot/auto-controlled seats in dcTurnOrderIds
+ * so human players never get stuck waiting for a bot to place a physical card.
+ */
+function resolveNextHumanCardTurn(
+  turnOrderIds: string[],
+  initialPlacedIds: string[],
+  players: FirestorePlayer[],
+  actorUid: string
+): { placedIds: string[]; nextTurnIndex: number; allPlaced: boolean } {
+  const placedSet = new Set(initialPlacedIds);
+
+  let nextIdx = turnOrderIds.findIndex((id) => !placedSet.has(id));
+  while (nextIdx !== -1 && nextIdx < turnOrderIds.length) {
+    const candidateId = turnOrderIds[nextIdx];
+    const candidatePlayer = players.find((p) => p.id === candidateId);
+    if (
+      candidatePlayer &&
+      candidateId !== actorUid &&
+      isAutoControlledSeat(candidatePlayer, actorUid)
+    ) {
+      placedSet.add(candidateId);
+      nextIdx = turnOrderIds.findIndex((id) => !placedSet.has(id));
+    } else {
+      break;
+    }
+  }
+
+  const placedIds = Array.from(placedSet);
+  const allPlaced =
+    turnOrderIds.length > 0 && turnOrderIds.every((id) => placedSet.has(id));
+
+  return {
+    placedIds,
+    nextTurnIndex: allPlaced ? turnOrderIds.length - 1 : Math.max(0, nextIdx),
+    allPlaced,
+  };
+}
+
+/**
  * STEP 1: Start Detective Club Game
  * - Ensures minimum 4 players (fills with bots if needed)
  * - Elects Active Player (prioritizing human players so they can type the secret word)
  * - Elects 1 Conspirator secretly from the remaining players
  * - Designates remaining players as Detectives
+ * - Builds turn order with Active Player first
  * - Advances room status to 'dc_word_entry'
  */
-export async function startDetectiveClubGame(roomId: string): Promise<void> {
+export async function startDetectiveClubGame(
+  roomId: string,
+  discussionDurationSeconds: number = 90
+): Promise<void> {
   const user = await ensureAuthUser();
   const roomRef = doc(db, 'rooms', roomId);
 
@@ -49,6 +107,8 @@ export async function startDetectiveClubGame(roomId: string): Promise<void> {
     const conspirator =
       otherPlayers[Math.floor(Math.random() * otherPlayers.length)];
 
+    const turnOrderIds = buildDetectiveTurnOrder(players, activePlayer.id);
+
     const batch = writeBatch(db);
 
     batch.update(roomRef, {
@@ -56,7 +116,13 @@ export async function startDetectiveClubGame(roomId: string): Promise<void> {
       dcActivePlayerId: activePlayer.id,
       dcConspiratorId: conspirator.id,
       dcSecretWord: '',
+      dcRoundNumber: 1,
       dcCardRound: 1,
+      dcTurnOrderIds: turnOrderIds,
+      dcTurnIndex: 0,
+      dcCardPlacedPlayerIds: [],
+      dcSpeakerIndex: 0,
+      dcDiscussionDurationSeconds: discussionDurationSeconds,
       dcVotes: {},
       winnerTeam: 'in_progress',
       updatedAt: new Date().toISOString(),
@@ -82,15 +148,18 @@ export async function startDetectiveClubGame(roomId: string): Promise<void> {
 }
 
 /**
- * STEP 2: Active Player Submits Secret Word
+ * STEP 2: Active Player Submits Secret Word & Places 1st Physical Card on Table
  * - Delivers secret word to Detectives and Active Player
  * - Delivers blank notebook ('') to Conspirator
+ * - Marks Active Player as having placed Card #1 (since they place it while setting the word)
+ * - Auto-advances any bot seats and sets turn to the next player for Card Round 1
  * - Transitions room status to 'dc_card_rounds'
  */
 export async function submitDetectiveClubSecretWord(
   roomId: string,
   secretWord: string
 ): Promise<void> {
+  const user = await ensureAuthUser();
   const cleanWord = secretWord.trim();
   if (!cleanWord) throw new Error('กรุณาระบุคำศัพท์ลับ');
 
@@ -103,12 +172,34 @@ export async function submitDetectiveClubSecretWord(
     const playersSnap = await getDocs(
       collection(db, 'rooms', roomId, 'players')
     );
+    const players = playersSnap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    })) as FirestorePlayer[];
+
+    const activePlayerId = room.dcActivePlayerId || user.uid;
+    const turnOrderIds =
+      room.dcTurnOrderIds && room.dcTurnOrderIds.length > 0
+        ? room.dcTurnOrderIds
+        : buildDetectiveTurnOrder(players, activePlayerId);
+
+    // Informer places their 1st card face-up when submitting the word
+    const { placedIds, nextTurnIndex } = resolveNextHumanCardTurn(
+      turnOrderIds,
+      [activePlayerId],
+      players,
+      user.uid
+    );
+
     const batch = writeBatch(db);
 
     batch.update(roomRef, {
       dcSecretWord: cleanWord,
       status: 'dc_card_rounds',
       dcCardRound: 1,
+      dcTurnOrderIds: turnOrderIds,
+      dcCardPlacedPlayerIds: placedIds,
+      dcTurnIndex: nextTurnIndex,
       updatedAt: new Date().toISOString(),
     });
 
@@ -128,7 +219,85 @@ export async function submitDetectiveClubSecretWord(
 }
 
 /**
- * STEP 3: Advance Card Placement Rounds on Physical Table
+ * STEP 3A: Player Confirms Placing Their Physical Card on the Table
+ * - Adds playerId to dcCardPlacedPlayerIds
+ * - Auto-fills any subsequent bot seats
+ * - If all players have placed their card for Round 1 -> automatically advances to Card Round 2 (starting at Informer #1)
+ * - If all players have placed their card for Round 2 -> automatically transitions to Discussion ('dc_discussion')
+ */
+export async function confirmDetectiveClubCardPlaced(
+  roomId: string,
+  playerId: string
+): Promise<void> {
+  const user = await ensureAuthUser();
+  const roomRef = doc(db, 'rooms', roomId);
+
+  try {
+    const roomSnap = await getDoc(roomRef);
+    if (!roomSnap.exists()) throw new Error('Room not found');
+    const room = roomSnap.data() as FirestoreRoom;
+
+    const playersSnap = await getDocs(
+      collection(db, 'rooms', roomId, 'players')
+    );
+    const players = playersSnap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    })) as FirestorePlayer[];
+
+    const activePlayerId = room.dcActivePlayerId || '';
+    const turnOrderIds =
+      room.dcTurnOrderIds && room.dcTurnOrderIds.length > 0
+        ? room.dcTurnOrderIds
+        : buildDetectiveTurnOrder(players, activePlayerId);
+
+    const currentPlaced = room.dcCardPlacedPlayerIds || [];
+    const updatedPlaced = currentPlaced.includes(playerId)
+      ? currentPlaced
+      : [...currentPlaced, playerId];
+
+    const { placedIds, nextTurnIndex, allPlaced } = resolveNextHumanCardTurn(
+      turnOrderIds,
+      updatedPlaced,
+      players,
+      user.uid
+    );
+
+    const cardRound = room.dcCardRound || 1;
+
+    if (!allPlaced) {
+      await updateDoc(roomRef, {
+        dcCardPlacedPlayerIds: placedIds,
+        dcTurnIndex: nextTurnIndex,
+        updatedAt: new Date().toISOString(),
+      });
+      return;
+    }
+
+    // All players have placed their card for the current round!
+    if (cardRound === 1) {
+      // Move to Card Round 2, starting back at index 0 (Active Player / Informer)
+      await updateDoc(roomRef, {
+        dcCardRound: 2,
+        dcCardPlacedPlayerIds: [],
+        dcTurnIndex: 0,
+        updatedAt: new Date().toISOString(),
+      });
+    } else {
+      // Both Card Rounds 1 and 2 are complete -> Move to Discussion & Explanation Phase
+      await updateDoc(roomRef, {
+        status: 'dc_discussion',
+        dcSpeakerIndex: 0,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}`);
+  }
+}
+
+/**
+ * STEP 3B: Host / Informer Manual Override to Advance Card Placement Round
  * - From Card Round 1 -> Card Round 2
  * - From Card Round 2 -> Discussion & Explanation Phase ('dc_discussion')
  */
@@ -141,14 +310,35 @@ export async function advanceDetectiveClubCardRound(
     if (targetRound === 2) {
       await updateDoc(roomRef, {
         dcCardRound: 2,
+        dcCardPlacedPlayerIds: [],
+        dcTurnIndex: 0,
         updatedAt: new Date().toISOString(),
       });
     } else {
       await updateDoc(roomRef, {
         status: 'dc_discussion',
+        dcSpeakerIndex: 0,
         updatedAt: new Date().toISOString(),
       });
     }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}`);
+  }
+}
+
+/**
+ * STEP 3C: Advance Explanation Speaker in Discussion Phase
+ */
+export async function advanceDetectiveClubSpeaker(
+  roomId: string,
+  nextSpeakerIndex: number
+): Promise<void> {
+  const roomRef = doc(db, 'rooms', roomId);
+  try {
+    await updateDoc(roomRef, {
+      dcSpeakerIndex: nextSpeakerIndex,
+      updatedAt: new Date().toISOString(),
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}`);
   }
@@ -346,7 +536,7 @@ export async function submitDetectiveClubVote(
 
 /**
  * STEP 6: Rematch / Next Round of Detective Club
- * Rotates Active Player to the next human player in order
+ * Rotates Active Player to the next human player in order and increments dcRoundNumber
  */
 export async function rematchDetectiveClubGame(roomId: string): Promise<void> {
   const user = await ensureAuthUser();
@@ -378,6 +568,8 @@ export async function rematchDetectiveClubGame(roomId: string): Promise<void> {
     const nextConspirator =
       otherPlayers[Math.floor(Math.random() * otherPlayers.length)];
 
+    const turnOrderIds = buildDetectiveTurnOrder(players, nextActivePlayer.id);
+
     const batch = writeBatch(db);
 
     batch.update(roomRef, {
@@ -385,7 +577,12 @@ export async function rematchDetectiveClubGame(roomId: string): Promise<void> {
       dcActivePlayerId: nextActivePlayer.id,
       dcConspiratorId: nextConspirator.id,
       dcSecretWord: '',
+      dcRoundNumber: (room.dcRoundNumber || 1) + 1,
       dcCardRound: 1,
+      dcTurnOrderIds: turnOrderIds,
+      dcTurnIndex: 0,
+      dcCardPlacedPlayerIds: [],
+      dcSpeakerIndex: 0,
       dcVotes: {},
       winnerTeam: 'in_progress',
       updatedAt: new Date().toISOString(),

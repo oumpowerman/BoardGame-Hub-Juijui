@@ -18,6 +18,10 @@ import {
   UndercoverWordCategoryId,
   UndercoverWordPair,
 } from '../../data/undercoverWords';
+import {
+  SameRoomQuickFriendBar,
+  SeatQuickAddFriendButton,
+} from '../friends/SameRoomQuickFriendBar';
 
 export interface UndercoverLobbyProps {
   currentRoom: FirestoreRoom;
@@ -314,6 +318,13 @@ export const UndercoverLobby: React.FC<UndercoverLobbyProps> = ({
         )}
       </div>
 
+      {/* Same-Room 1-Click Add Friends Strip */}
+      <SameRoomQuickFriendBar
+        players={players}
+        currentUid={currentUser.uid}
+        friends={friends}
+      />
+
       {/* Player Seats Grid */}
       <div className="bg-white border border-violet-200 rounded-3xl p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -371,6 +382,11 @@ export const UndercoverLobby: React.FC<UndercoverLobbyProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
+                  <SeatQuickAddFriendButton
+                    seatPlayer={p}
+                    currentUid={currentUser.uid}
+                    friends={friends}
+                  />
                   <span
                     className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${
                       p.isReady

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { QrCode, Copy, Check, Volume2, VolumeX, LogOut } from 'lucide-react';
+import { Copy, Check, Volume2, VolumeX, LogOut, Mic } from 'lucide-react';
 import { FirestoreRoom } from '../../firebase/tableService';
 
 export interface AvalonActiveRoomHeaderProps {
   currentRoom: FirestoreRoom;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  onTestVoice?: () => void;
   onLeaveRoom: () => Promise<void>;
   onOpenInviteModal?: () => void;
 }
@@ -14,6 +15,7 @@ export const AvalonActiveRoomHeader: React.FC<AvalonActiveRoomHeaderProps> = ({
   currentRoom,
   soundEnabled,
   onToggleSound,
+  onTestVoice,
   onLeaveRoom,
 }) => {
   const [copied, setCopied] = useState(false);
@@ -45,8 +47,8 @@ export const AvalonActiveRoomHeader: React.FC<AvalonActiveRoomHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Actions (Copy code, Sound toggle, Leave room) */}
-      <div className="flex items-center gap-2">
+      {/* Right: Actions (Copy code, Test GM Voice, Sound toggle, Leave room) */}
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={handleCopyCode}
@@ -56,13 +58,36 @@ export const AvalonActiveRoomHeader: React.FC<AvalonActiveRoomHeaderProps> = ({
           <span>{copied ? 'คัดลอกแล้ว!' : 'คัดลอกรหัส'}</span>
         </button>
 
+        {onTestVoice && (
+          <button
+            type="button"
+            onClick={onTestVoice}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/90 rounded-xl transition-all cursor-pointer shadow-2xs"
+            title="ทดสอบเสียงพากย์ Game Master"
+          >
+            <Mic className="w-3.5 h-3.5 text-amber-600" />
+            <span>ทดสอบเสียง GM</span>
+          </button>
+        )}
+
         <button
           type="button"
           onClick={onToggleSound}
-          className="p-2 text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all cursor-pointer shadow-2xs"
-          title={soundEnabled ? 'ปิดเสียงเอฟเฟกต์' : 'เปิดเสียงเอฟเฟกต์'}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border rounded-xl transition-all cursor-pointer shadow-2xs ${
+            soundEnabled
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+          }`}
+          title={soundEnabled ? 'ปิดเสียงพากย์ GM & เอฟเฟกต์' : 'เปิดเสียงพากย์ GM & เอฟเฟกต์'}
         >
-          {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-600" /> : <VolumeX className="w-4 h-4 text-rose-500" />}
+          {soundEnabled ? (
+            <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
+          ) : (
+            <VolumeX className="w-3.5 h-3.5 text-rose-500" />
+          )}
+          <span className="hidden sm:inline">
+            {soundEnabled ? 'เสียงพากย์ GM: เปิด' : 'เสียงพากย์ GM: ปิด'}
+          </span>
         </button>
 
         <button

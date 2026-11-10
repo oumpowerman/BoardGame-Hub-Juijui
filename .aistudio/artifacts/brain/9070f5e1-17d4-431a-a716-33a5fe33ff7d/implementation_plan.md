@@ -1,100 +1,61 @@
-# Cheese Thief: Customizable Night Hour Duration & Pause/Resume Controls
+# Cheese Thief UX & Animated Cheese Status Plan
 
-Empowering the Cheese Thief (หนูขโมยชีส) table host with full control over the 6 Night Hours (ตี 1 ถึง ตี 6): customizable countdown duration per hour (5s–20s) configurable in both the lobby and on-the-fly, synchronized pause/resume playback controls, and immediate next-hour skip buttons.
+ระบบปรับปรุงประสบการณ์การเล่น **จอมโจรขโมยชีส (Cheese Thief)** เพื่อแก้ปัญหาปุ่มกดซ้ำซ้อนบนหน้าจอ และเพิ่ม **แท่นวางชีสจำลองพร้อมอนิเมชั่นสุดน่ารัก** ให้ผู้เล่นที่ลืมตาขึ้นมาในแต่ละชั่วโมงมองแวบเดียวก็รู้ทันทีว่าก้อนชีสยังอยู่หรือถูกขโมยไปแล้ว
+
+---
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The controls and configuration placement have been confirmed based on user answers in Phase 1:
-
-- **Confirmed Decision 1 (Night Countdown Controls)**: Pause and resume button with next hour skip controls. The host can pause/freeze the countdown timer at any moment (e.g. if a cup is knocked, a player opens their eyes late, or the group needs extra time), and resume smoothly when ready.
-- **Confirmed Decision 2 (Duration Configuration Placement)**: Both in lobby settings before starting and on-the-fly during the night phase, featuring quick presets (`[5s] [8s] [10s (มาตรฐาน)] [15s] [20s]`).
+> แผนงานฉบับปรับปรุงตามความต้องการล่าสุดของคุณ:
+> 1. **ยุบรวมปุ่มซ้ำซ้อนให้เหลือปุ่มเดียว (`จำบทบาทแล้ว → ไปทอยเต๋าในถ้วย`):** แก้ปัญหาที่มีทั้งปุ่มในการ์ด (`RoleDealStep`) และปุ่มแถบล่าง (`MobilePhaseActionBar`) โผล่ซ้อนกัน 2 ปุ่ม ให้เหลือปุ่มหลักปุ่มเดียวที่ชัดเจน
+> 2. **เพิ่มการ์ดแสดงสถานะก้อนชีสกลางโต๊ะพร้อมอนิเมชั่นแยกสถานะชัดเจน:**
+>    - **สถานะที่ 1 — ชีสยังอยู่ปลอดภัย (`🧀 ชีสก้อนทองยังวางอยู่กลางโต๊ะ!`):** ไอคอนชีสก้อนโตลอยดึ๋งๆ (Bouncy Floating Animation) พร้อมประกายวิบวับบนจานรองสีเขียวมิ้นต์/เหลืองพาสเทล
+>    - **สถานะที่ 2 — กำลังถูกขโมยในชั่วโมงนี้ (`🐾 จอมโจรกำลังเอื้อมมือขโมยชีส!`):** อนิเมชั่นก้อนชีสสั่นไหวพร้อมอุ้งเท้าหนูค่อยๆ ตะครุบก้อนชีส
+>    - **สถานะที่ 3 — ชีสถูกขโมยหายไปแล้ว (`🚨 ชีสหายไปแล้ว! เหลือแต่จานว่างเปล่า`):** อนิเมชั่น **ก้อนชีสโปร่งแสงกระพริบถี่ๆ (Blinking Ghost Cheese Outline)** สลับกับรอยเท้าหนูและเศษชีสบนจานว่างสีชมพูโรสพาสเทล มองปุ๊บรู้ปั๊บว่าโดนขโมยไปแล้วก่อนหน้านี้!
 
 ---
 
 ## 1. Overview & Core Concept
 
-In **Cheese Thief**, during Step 4 (Night Phase / คืนขโมยชีส):
-- The digital moderator counts through 6 hours sequentially: ตี 1, ตี 2, ตี 3, ตี 4, ตี 5, ตี 6.
-- Currently, the timer is rigidly hardcoded to 10 seconds per hour and auto-advances uncontrollably, with no pause mechanism if players need more time or a brief pause at the table.
-
-This enhancement introduces:
-1. **Synchronized Play/Pause Host Controls**: The host can freeze the night timer across all player screens with a clear "⏸️ พักเวลาชั่วคราว" indicator.
-2. **On-the-Fly & Lobby Duration Tuning**: Presets of 5s, 8s, 10s, 15s, and 20s per night hour to fit casual fast-paced groups or beginner slower-paced tables.
-3. **Manual Next Hour Skip**: Immediate jump to the next hour when all awake players have finished their action without waiting for the timer to expire.
+- **What It Does**:
+  1. ขจัดปุ่มกดซ้ำ 2 ปุ่มในสเต็ปดูบทบาทและสเต็ปอื่นๆ ของเกมหนูขโมยชีส ให้เหลือปุ่มกดหลักเพียงจุดเดียว (`จำบทบาทแล้ว → ไปทอยเต๋าในถ้วย`)
+  2. สร้างวิดเจ็ต **Animated Cheese Table Pedestal (แท่นก้อนชีสกลางโต๊ะ)** ขนาดใหญ่สีสันสดใสน่ารักสำหรับผู้เล่นที่ลืมตาตื่นขึ้นมาในแต่ละชั่วโมง (`1:00–6:00 น.`)
+- **Target Audience / Persona**: ผู้เล่นบอร์ดเกมจอมโจรขโมยชีสที่ต้องการดูสถานะบนหน้าจอมือถืออย่างรวดเร็วภายในเวลาไม่กี่วินาทีที่ลืมตาตื่น
+- **Key Value**: ไม่สับสนกับปุ่มซ้อนกัน 2 ปุ่ม และไม่ต้องเพ่งอ่านตัวหนังสือเล็กๆ ว่าชีสยังอยู่หรือหายไปแล้ว เพราะมองจากอนิเมชั่นชีสลอยดึ๋งๆ vs ชีสกระพริบได้ทันที
 
 ---
 
 ## 2. User Experience & Visual Design
 
-### Key User Flows
-
-```
-[ In-Person Lobby ]
-  └── Host selects Night Duration: [5s] [8s] [10s (ค่าเริ่มต้น)] [15s] [20s]
-          │
-          ▼
-[ Step 4: Night Phase (ตี 1 - ตี 6) ]
-  ├── Countdown Bar: Ticks down from selected duration (e.g. 15s)
-  ├── Host Playback Controls (Sticky / Inline HUD):
-  │     ├── [ ⏸️ หยุดเวลาชั่วคราว ] / [ ▶️ นับเวลาต่อ ]
-  │     ├── [ ⏭️ ข้ามไปชั่วโมงถัดไป (ตี 2 น.) ]
-  │     └── Quick On-the-Fly Presets: [8s] [10s] [15s] [20s]
-  │
-  └── When Paused:
-        • Timer halts across all player devices
-        • Status pill shows: "⏸️ หัวหน้าโต๊ะหยุดเวลานับถอยหลังชั่วคราว"
-        • Host voice narration pauses until resumed
-```
-
-### Visual Identity & Theme
-- **Color Palette**: Warm amber (`#F59E0B`), cheese gold (`#FBBF24`), midnight indigo (`#312E81`), and soft light pastel surfaces (`#FFFBEB`, `#FFFFFF`, `border-amber-200`).
-- **Playback HUD**: Compact rounded-2xl media-style control panel with Lucide icons (`Pause`, `Play`, `SkipForward`, `Clock`, `Sliders`).
-- **Responsive & Mobile-First**: Fits comfortably on mobile viewports with `min-h-[44px]` touch targets.
+- **1. ปุ่มเดียวชัดเจนในหน้าแจกบทบาท (STEP 2)**:
+  - รวมปุ่มยืนยันให้เหลือปุ่มเดียวข้อความ **`จำบทบาทแล้ว → ไปทอยเต๋าในถ้วย`** และนำปุ่มซ้ำซ้อนในแถบล่าง (`MobilePhaseActionBar`) ออกเพื่อไม่ให้มี 2 ปุ่มแข่งกันบนหน้าจอ
+- **2. อนิเมชั่นแท่นวางชีสกลางโต๊ะ (STEP 4 — ช่วงลืมตาตื่นกลางคืน)**:
+  - **เมื่อชีสยังอยู่ (`currentHour < stolenHour` หรือยังไม่ถูกหยิบ):**
+    - แสดงก้อนชีส 🧀 ขนาดใหญ่ **ลอยขึ้น-ลงดึ๋งๆ อย่างนุ่มนวล (`y: [0, -8, 0]`, `scale: [1, 1.06, 1]`)** พร้อมดาววิบวับ `✨` และป้ายกำกับสีเขียวมิ้นต์ **"🧀 ชีสยังวางอยู่ปลอดภัยดี!"**
+  - **เมื่อจอมโจรกำลังขโมยในชั่วโมงนี้ (`currentHour === stolenHour`):**
+    - แสดงก้อนชีสสั่นดุ๊กดิ๊กพร้อมรอยเท้าหนู 🐾 และป้ายสีส้มทอง **"⚡ จอมโจรกำลังขโมยชีสในชั่วโมงนี้!"**
+  - **เมื่อชีสถูกขโมยไปแล้ว (`currentHour > stolenHour`):**
+    - แสดงก้อนชีสเงาจางๆ **กระพริบเตือน (`opacity: [0.2, 0.85, 0.2]`)** อยู่เหนือจานว่างเปล่า พร้อมรอยเท้าหนูวิ่งหนี 🐾💨 และป้ายสีชมพูโรส **"🚨 ชีสถูกขโมยหายไปแล้ว! (เหลือแต่จานว่าง)"**
 
 ---
 
-## 3. Key Product Decisions & Trade-Offs
-
-- **Decision 1: Firestore Real-Time Sync vs Local Timer**
-  - *Chosen Approach*: Store `cheeseNightDuration` and `cheeseNightPaused` in the `rooms/{roomId}` Firestore document.
-  - *Why*: Ensures that when the host hits Pause, all players seated around the table immediately see the paused state and the countdown stops synchronously on every device.
-
-- **Decision 2: Audio & Thai TTS Speech Synchronization**
-  - *Chosen Approach*: When paused, cancel/defer the "sleep" reminder voice prompt at the 4-second mark until the timer resumes and actually passes second 4.
-  - *Why*: Prevents awkward spoken commands ("หนูตีสามหลับตา...") while the table is paused.
-
----
-
-## 4. Technical Architecture & Component Flow
+## 3. Technical Architecture & Data Strategy
 
 ```
-┌────────────────────────────────────────────────────────┐
-│               Firestore Room Document                  │
-│  - cheeseNightDuration: number (default 10)            │
-│  - cheeseNightPaused: boolean (default false)          │
-└───────────────────────────┬────────────────────────────┘
-                            │
-            ┌───────────────┴───────────────┐
-            ▼                               ▼
-┌───────────────────────┐       ┌────────────────────────┐
-│  InPersonLobby.tsx    │       │ NightTimelineStep.tsx  │
-│  - Preset duration    │       │ - Play / Pause button  │
-│    selector in lobby  │       │ - Next Hour skip       │
-│  - Fall Mouse toggle  │       │ - Live countdown bar   │
-└───────────────────────┘       │ - On-the-fly duration  │
-                                └────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                     InPersonPhases                       │
+├────────────────────────────┬─────────────────────────────┤
+│       RoleDealStep         │      NightTimelineStep      │
+│ (Single Unified CTA Button │  ┌───────────────────────┐  │
+│  "จำบทบาทแล้ว → ไปทอยเต๋า   │  │ AnimatedCheeseStatus  │  │
+│   ในถ้วย" — No Duplicate   │  │ - Safe: Bouncy Float  │  │
+│   Mobile Sticky Button)    │  │ - Stolen: Blinking    │  │
+│                            │  │   Ghost Cheese + Paws │  │
+│                            │  └───────────────────────┘  │
+└────────────────────────────┴─────────────────────────────┘
 ```
 
-### Planned File Changes (Turn 3 upon approval)
-1. **`src/firebase/table/types.ts`**:
-   - Add `cheeseNightDuration?: number;` and `cheeseNightPaused?: boolean;` to `FirestoreRoom`.
-2. **`src/firebase/table/cheeseThiefService.ts`**:
-   - Add `setCheeseNightDuration(roomId, seconds)` and `toggleCheeseNightPause(roomId, isPaused)`.
-3. **`src/components/cheesethief/useCheeseThiefGameMaster.ts`**:
-   - Respect `activeRoom.cheeseNightDuration` (replacing hardcoded 10s) and halt the interval when `activeRoom.cheeseNightPaused === true`.
-4. **`src/components/inperson/phases/NightTimelineStep.tsx`**:
-   - Add Host Playback Control bar: Pause/Resume, Skip Next Hour, and On-the-Fly duration tabs.
-   - Show paused banner for all participants.
-5. **`src/components/inperson/InPersonLobby.tsx`**:
-   - Add Night Hour Duration selector in the Lobby Settings card.
+- **Interactive Component Mapping**:
+  - Update `RoleDealStep.tsx` & `InPersonPhases.tsx`: ปรับข้อความปุ่มเป็น `จำบทบาทแล้ว → ไปทอยเต๋าในถ้วย` และตัดปุ่มซ้ำจาก `MobilePhaseActionBar` ออก
+  - Update `NightTimelineStep.tsx`: แทนที่ข้อความสถานะชีสบรรทัดเล็กๆ ด้านล่างด้วยวิดเจ็ต **Animated Cheese Status Card** ขนาดใหญ่พร้อมอนิเมชั่น `motion.div` แยกตามสถานะชีส (ลอยดึ๋งๆ vs กระพริบ)
