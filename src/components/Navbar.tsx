@@ -128,9 +128,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="sticky top-0 z-30 w-full max-w-full bg-white/95 backdrop-blur-md border-b border-rose-100/80 shadow-xs">
-      <div className="max-w-[1280px] mx-auto flex items-center justify-between gap-2 sm:gap-6 px-3 sm:px-6 py-2.5 sm:py-3">
-        {/* Zone 1: Brand Wordmark */}
+      <header className="fixed top-0 left-0 right-0 z-50 w-full max-w-full bg-white/95 backdrop-blur-md border-b border-rose-100/80 shadow-xs">
+        <div className="max-w-[1280px] mx-auto flex items-center justify-between gap-2 sm:gap-6 px-3 sm:px-6 py-2.5 sm:py-3">
+          {/* Zone 1: Brand Wordmark */}
         <a
           href="#top"
           onClick={(e) => {
@@ -417,14 +417,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </nav>
 
-        {/* Zone 3: Account, Friends & Primary Action */}
+        {/* Zone 3: Combined Account/Friends & Sign Out */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-          {/* User Profile Avatar Pill */}
+          {/* Combined User Profile & Friends Pill Badge */}
           <button
             type="button"
             onClick={onOpenFriendModal}
-            className="inline-flex items-center gap-1.5 p-1 sm:px-2.5 sm:py-1 bg-amber-50 hover:bg-amber-100/80 border border-amber-200/90 rounded-xl transition-all cursor-pointer shadow-2xs shrink-0"
-            title={`โปรไฟล์: ${currentUser.accountName} (คลิกเพื่อเปลี่ยนรูป/ชื่อ)`}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 hover:bg-amber-100/90 border border-amber-200/90 rounded-2xl transition-all cursor-pointer shadow-2xs shrink-0"
+            title={`โปรไฟล์ & เพื่อน: ${currentUser.accountName} (${friendsCount} คน)`}
           >
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-200 border border-amber-300 flex items-center justify-center font-bold text-amber-950 text-xs overflow-hidden shadow-2xs shrink-0">
               {currentUser.avatarUrl ? (
@@ -437,39 +437,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                 currentUser.accountName.slice(0, 2).toUpperCase()
               )}
             </div>
-            <span className="hidden sm:inline text-xs font-black text-amber-950 truncate max-w-[90px]">
-              {currentUser.accountName}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onOpenFriendModal}
-            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-bold text-rose-900 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer min-h-[38px] sm:min-h-[42px]"
-            title={`รายชื่อเพื่อน (${friendsCount})`}
-          >
-            <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-600 shrink-0" />
-            <span className="hidden xs:inline">เพื่อน</span>
-            <span className="font-mono text-[11px] sm:text-xs font-extrabold">
-              ({friendsCount})
-            </span>
-            {pendingRequestsCount > 0 && (
-              <span className="px-1.5 py-0.5 bg-rose-600 text-white text-[10px] font-mono font-extrabold rounded-md">
-                +{pendingRequestsCount}
+            <div className="flex flex-col text-left">
+              <span className="text-xs font-black text-amber-950 truncate max-w-[100px]">
+                {currentUser.accountName}
               </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            data-start="true"
-            onClick={onEnterCheeseThiefScreen}
-            className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-extrabold text-amber-950 bg-amber-400 hover:bg-amber-300 border border-amber-400 rounded-xl transition-all shadow-xs whitespace-nowrap shrink-0 cursor-pointer min-h-[38px] sm:min-h-[42px]"
-          >
-            <span className="shrink-0">🧀</span>
-            <span>เข้าเล่น</span>
-            <span className="hidden sm:inline">หนูขโมยชีส</span>
-            <ArrowRight className="w-3.5 h-3.5 hidden sm:inline" />
+              <span className="text-[10px] font-bold text-rose-800 inline-flex items-center gap-1">
+                <Users className="w-3 h-3 text-rose-600 inline" />
+                <span>เพื่อน ({friendsCount})</span>
+                {pendingRequestsCount > 0 && (
+                  <span className="px-1 bg-rose-600 text-white text-[9px] font-extrabold rounded">
+                    +{pendingRequestsCount}
+                  </span>
+                )}
+              </span>
+            </div>
           </button>
 
           <button
@@ -538,6 +519,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
       </nav>
       </header>
+      <div className="h-24 sm:h-28" aria-hidden="true" />
 
       {/* Mobile Popover Modal when triggered from mobile bar (Rendered at Root Viewport Level) */}
       <AnimatePresence>

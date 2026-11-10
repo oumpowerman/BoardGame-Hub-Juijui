@@ -1,6 +1,6 @@
 {
-  "summary":  "Plan to adapt Hues and Cues phone view: replace the redundant 480-color grid with a sleek 'Companion Remote' containing coordinate pickers (A-T, 1-24), fine-tune directional arrows, token placement status, and clear prompts to look at the central iPad board. The full 480-tile interactive board is rendered prominently when in iPad mode.",
-  "updatedAt":  "2026-11-10T08:00:26.843798020Z",
+  "summary":  "Implementation plan for Navbar updates: remove 'เข้าเล่น หนูชีส' quick button, merge user profile name and friend count into a single combined clickable pill badge opening the friend modal, keep navbar sticky at the top, and leave all other code strictly untouched.",
+  "updatedAt":  "2026-11-10T08:54:55.881094669Z",
   "requestFeedback":  true,
   "userFacing":  true
 }
