@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for Navbar updates: remove 'เข้าเล่น หนูชีส' quick button, merge user profile name and friend count into a single combined clickable pill badge opening the friend modal, keep navbar sticky at the top, and leave all other code strictly untouched.",
-  "updatedAt":  "2026-11-10T08:54:55.881094669Z",
+  "summary":  "Plan to fix missing Hues and Cues catalog cover image on production/Vercel deploy by copying the generated image into /public/images/ and updating coverImage in src/data/seedData.ts to '/images/game_hues_cues_1794295237258.jpg'.",
+  "updatedAt":  "2026-11-10T15:27:54.265124615Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

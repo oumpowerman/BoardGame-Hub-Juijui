@@ -363,7 +363,7 @@ export const BOARD_GAMES: BoardGame[] = [
     activeRoomsCount: 0,
     onlinePlayersCount: 0,
     forumThreadsCount: 0,
-    coverImage: '/src/assets/images/game_hues_cues_1794295237258.jpg',
+    coverImage: '/images/game_hues_cues_1794295237258.jpg',
     shortSummary:
       'วาง iPad เป็นแผ่นกระดานสีกลาง 480 ช่องบนโต๊ะ ผู้ให้คำใบ้บอกคำใบ้สั้น ๆ เพื่อน ๆ ทายสีโดยลากวางตัวหมากชื่อตัวเองลงบนกระดาน ยิ่งใกล้เป้าหมายยิ่งได้คะแนนสูง!',
     rulesOverview: [
