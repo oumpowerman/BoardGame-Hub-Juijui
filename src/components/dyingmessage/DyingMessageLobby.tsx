@@ -23,6 +23,7 @@ import {
   DYING_MESSAGE_CATEGORIES,
   DyingMessageEvidenceCategory,
 } from '../../data/dyingMessageCards';
+import { DyingMessageDeckExplorerModal } from './DyingMessageDeckExplorerModal';
 
 interface DyingMessageLobbyProps {
   room: FirestoreRoom;
@@ -65,6 +66,7 @@ export const DyingMessageLobby: React.FC<DyingMessageLobbyProps> = ({
 }) => {
   const [showQrBox, setShowQrBox] = useState<boolean>(false);
   const [copiedBoardUrl, setCopiedBoardUrl] = useState<boolean>(false);
+  const [isDeckExplorerOpen, setIsDeckExplorerOpen] = useState<boolean>(false);
 
   const isHost = room.hostId === currentUser.uid;
   const activeCategory = room.dmCategory || 'all';
@@ -115,6 +117,15 @@ export const DyingMessageLobby: React.FC<DyingMessageLobbyProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsDeckExplorerOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-300 text-sky-950 text-xs font-bold transition-colors cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-sky-600" />
+              <span>เปิดดูคลังการ์ด 100 ใบ</span>
+            </button>
+
             <button
               type="button"
               onClick={onOpenShareModal}
@@ -582,6 +593,11 @@ export const DyingMessageLobby: React.FC<DyingMessageLobbyProps> = ({
           </div>
         </div>
       </div>
+      {/* Dying Message 100 Cards Deck Explorer Modal */}
+      <DyingMessageDeckExplorerModal
+        isOpen={isDeckExplorerOpen}
+        onClose={() => setIsDeckExplorerOpen(false)}
+      />
     </div>
   );
 };

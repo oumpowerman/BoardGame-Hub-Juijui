@@ -14,6 +14,7 @@ import {
 import {
   drawRandomDyingMessageCards,
   DyingMessageEvidenceCategory,
+  DyingMessageEvidenceCard,
 } from '../../data/dyingMessageCards';
 import {
   FirestoreRoom,
@@ -209,8 +210,8 @@ export async function selectDyingMessageVictim(
 
     // Draw 12 distinct cards: 6 for Victim (to pick 1 Real clue), 6 for Killer (to pick 2 Fake clues)
     const drawn12 = drawRandomDyingMessageCards(category, 12, usedIds);
-    const victimHand = drawn12.slice(0, 6).map((c) => c.id);
-    const killerHand = drawn12.slice(6, 12).map((c) => c.id);
+    const victimHand = drawn12.slice(0, 6).map((c: DyingMessageEvidenceCard) => c.id);
+    const killerHand = drawn12.slice(6, 12).map((c: DyingMessageEvidenceCard) => c.id);
 
     await updateDoc(doc(db, 'rooms', roomId, 'players', victim.id), {
       dmIsAlive: false,
@@ -573,8 +574,8 @@ export async function continueToNextDyingMessageNight(
     const category = room.dmCategory || 'all';
     const usedIds = (room.dmEvidenceRounds || []).flatMap((r) => r.cardIds);
     const drawn12 = drawRandomDyingMessageCards(category, 12, usedIds);
-    const victimHand = drawn12.slice(0, 6).map((c) => c.id);
-    const killerHand = drawn12.slice(6, 12).map((c) => c.id);
+    const victimHand = drawn12.slice(0, 6).map((c: DyingMessageEvidenceCard) => c.id);
+    const killerHand = drawn12.slice(6, 12).map((c: DyingMessageEvidenceCard) => c.id);
 
     if (newVictimId) {
       await updateDoc(doc(db, 'rooms', roomId, 'players', newVictimId), {

@@ -284,6 +284,7 @@ export const DyingMessagePhases: React.FC<DyingMessagePhasesProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {candidateIds.map((cId) => {
                   const card = getDyingMessageCardById(cId);
+                  if (!card) return null;
                   const isPicked = selectedVictimCard === cId;
                   return (
                     <button
@@ -349,6 +350,7 @@ export const DyingMessagePhases: React.FC<DyingMessagePhasesProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {candidateIds.map((cId) => {
                   const card = getDyingMessageCardById(cId);
+                  if (!card) return null;
                   const isPicked = selectedKillerCards.includes(cId);
                   return (
                     <button
@@ -590,6 +592,7 @@ export const DyingMessagePhases: React.FC<DyingMessagePhasesProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {evRound.cardIds.map((cardId) => {
               const card = getDyingMessageCardById(cardId);
+              if (!card) return null;
               const isEliminated = evRound.eliminatedFakeCardId === cardId;
               const isRealRevealed =
                 isGameOver && evRound.realCardId === cardId;

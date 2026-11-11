@@ -289,6 +289,8 @@ export const DyingMessageCentralBoard: React.FC<
                       const isRealTruthRevealed =
                         isGameOver && evRound.realCardId === cardId;
 
+                      if (!card) return null;
+
                       return (
                         <motion.div
                           key={cardId}
