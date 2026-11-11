@@ -1,6 +1,0 @@
-{
-  "summary":  "แผนงานวิจัยและขยายคลังการ์ดเบาะแสมรณะ (Dying Message) รวม 100 ใบ โดยแบ่งแยกไฟล์ตาม 4 หมวดหมู่ (หมวดละ 25 ใบ) ภายใต้โฟลเดอร์ src/data/dyingmessage/cards/ พร้อมสร้างคอมโพเนนต์ Card Gallery / Deck Explorer ให้ผู้เล่นตรวจสอบการ์ดและกติกาได้อย่างละเอียด",
-  "updatedAt":  "2026-11-11T05:49:45.088895645Z",
-  "requestFeedback":  true,
-  "userFacing":  true
-}

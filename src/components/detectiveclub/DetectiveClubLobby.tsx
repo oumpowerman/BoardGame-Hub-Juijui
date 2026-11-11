@@ -350,16 +350,14 @@ export const DetectiveClubLobby: React.FC<DetectiveClubLobbyProps> = ({
           {isHost && (
             <button
               type="button"
-              disabled={players.length < 4 || isLoading}
+              disabled={isLoading}
               onClick={onStartGame}
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 disabled:opacity-40 text-amber-950 font-black text-xs sm:text-sm shadow-md cursor-pointer transition-all min-h-[46px]"
             >
               <Play className="w-4 h-4 fill-current" />
               <span>
                 {players.length < 4
-                  ? `ต้องมีผู้เล่นอย่างน้อย 4 คน (ขาดอีก ${
-                      4 - players.length
-                    } คน)`
+                  ? `เริ่มเกมสมาคมนักสืบ (${players.length} คน · เสริมบอทให้ครบ 4 อัตโนมัติ) →`
                   : `เริ่มเกมสมาคมนักสืบ (${players.length} คน) → สุ่มแจกบทบาท!`}
               </span>
             </button>

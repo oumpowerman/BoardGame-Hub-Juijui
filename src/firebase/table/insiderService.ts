@@ -160,6 +160,33 @@ export async function acknowledgeInsiderRole(roomId: string): Promise<void> {
   }
 }
 
+// I-3.5 Host Force Acknowledge All Roles in Insider
+export async function forceAcknowledgeAllInsiderRoles(
+  roomId: string
+): Promise<void> {
+  await ensureAuthUser();
+  try {
+    const playersSnap = await getDocs(
+      collection(db, 'rooms', roomId, 'players')
+    );
+    for (const d of playersSnap.docs) {
+      const p = d.data() as FirestorePlayer;
+      if (!p.roleAcknowledged) {
+        await updateDoc(doc(db, 'rooms', roomId, 'players', d.id), {
+          roleAcknowledged: true,
+        });
+      }
+    }
+    await updateDoc(doc(db, 'rooms', roomId), {
+      status: 'word_reveal',
+      insiderEyesOpen: false,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}`);
+  }
+}
+
 // I-4. Master / Host Customizes or Re-rolls Secret Word during Step 3
 export async function updateInsiderSecretWord(
   roomId: string,

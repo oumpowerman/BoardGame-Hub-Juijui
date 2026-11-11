@@ -38,6 +38,7 @@ export interface InPersonPhasesProps {
   onCastVote: () => void;
   onPlayAgain: () => void;
   onOpenScoreModal?: () => void;
+  onForceAdvancePhase?: () => void;
 }
 
 export const InPersonPhases: React.FC<InPersonPhasesProps> = ({
@@ -69,6 +70,7 @@ export const InPersonPhases: React.FC<InPersonPhasesProps> = ({
   onCastVote,
   onPlayAgain,
   onOpenScoreModal,
+  onForceAdvancePhase,
 }) => {
   const [selectedFollowerTargets, setSelectedFollowerTargets] = useState<
     string[]
@@ -133,6 +135,7 @@ export const InPersonPhases: React.FC<InPersonPhasesProps> = ({
   const followersList = players.filter(
     (p) => p.isFollower || currentRoom.followerIds?.includes(p.id)
   );
+  const isHost = currentRoom.hostId === currentUid;
 
   return (
     <div className="space-y-5 pb-6">
@@ -166,11 +169,13 @@ export const InPersonPhases: React.FC<InPersonPhasesProps> = ({
             currentRoom={currentRoom}
             players={players}
             myPlayer={myPlayer}
+            isHost={isHost}
             isPeekingRole={isPeekingRole}
             onTogglePeekRole={onTogglePeekRole}
             onPeekRoleStart={onPeekRoleStart}
             onPeekRoleEnd={onPeekRoleEnd}
             onAcknowledgeRole={onAcknowledgeRole}
+            onForceAdvancePhase={onForceAdvancePhase}
           />
         )}
 
@@ -179,11 +184,13 @@ export const InPersonPhases: React.FC<InPersonPhasesProps> = ({
           <DiceRollStep
             players={players}
             myPlayer={myPlayer}
+            isHost={isHost}
             isFourPlayerDualDice={isFourPlayerDualDice}
             rollingDice={rollingDice}
             rolledDicePair={rolledDicePair}
             onRollDiceInCup={onRollDiceInCup}
             onConfirmDiceCupChoice={onConfirmDiceCupChoice}
+            onForceAdvancePhase={onForceAdvancePhase}
           />
         )}
 

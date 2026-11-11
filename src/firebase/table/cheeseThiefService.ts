@@ -23,10 +23,11 @@ export async function registerCheeseThiefIpadBoard(
   roomId: string,
   connected: boolean = true
 ): Promise<void> {
-  await ensureAuthUser();
+  const user = await ensureAuthUser();
   try {
     await updateDoc(doc(db, 'rooms', roomId), {
       ctIpadConnected: connected,
+      ctIpadUid: connected ? user.uid : '',
       ctIpadLastSeen: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -328,6 +329,75 @@ export async function submitSecretDiceRoll(
       OperationType.UPDATE,
       `rooms/${roomId}/players/${user.uid}`
     );
+  }
+}
+
+// 4.5 Host / iPad Force Advance from Role Deal or Dice Roll (Bypasses disconnected or stalled seats)
+export async function forceAdvanceCheeseThiefPhase(
+  roomId: string
+): Promise<void> {
+  await ensureAuthUser();
+  const roomRef = doc(db, 'rooms', roomId);
+  try {
+    const [roomSnap, playersSnap] = await Promise.all([
+      getDoc(roomRef),
+      getDocs(collection(db, 'rooms', roomId, 'players')),
+    ]);
+    if (!roomSnap.exists()) return;
+    const roomData = roomSnap.data() as FirestoreRoom;
+    const players = playersSnap.docs.map((d) => d.data() as FirestorePlayer);
+
+    if (roomData.status === 'role_deal') {
+      for (const p of players) {
+        if (!p.roleAcknowledged) {
+          await updateDoc(doc(db, 'rooms', roomId, 'players', p.id), {
+            roleAcknowledged: true,
+          });
+        }
+      }
+      await updateDoc(roomRef, {
+        status: 'dice_roll',
+        updatedAt: new Date().toISOString(),
+      });
+      return;
+    }
+
+    if (roomData.status === 'dice_roll') {
+      const isFourPlayerDualDice = players.length === 4;
+      let thiefHour = roomData.stolenHour || 0;
+
+      for (const p of players) {
+        let d1 = p.diceHour || 0;
+        let d2 = p.secondaryDiceHour || 0;
+        if (d1 <= 0) {
+          d1 = Math.floor(1 + Math.random() * 6);
+          if (isFourPlayerDualDice) {
+            d2 = Math.floor(1 + Math.random() * 6);
+            while (d2 === d1) {
+              d2 = Math.floor(1 + Math.random() * 6);
+            }
+          }
+          await updateDoc(doc(db, 'rooms', roomId, 'players', p.id), {
+            diceHour: d1,
+            secondaryDiceHour: d2,
+            rolledDicePair: isFourPlayerDualDice ? [d1, d2] : [d1],
+          });
+        }
+        if (p.role === 'cheese_thief') {
+          thiefHour = d1;
+        }
+      }
+
+      await updateDoc(roomRef, {
+        status: 'night_phases',
+        nightHour: 1,
+        stolenHour: thiefHour || 3,
+        cheeseStolen: false,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}`);
   }
 }
 

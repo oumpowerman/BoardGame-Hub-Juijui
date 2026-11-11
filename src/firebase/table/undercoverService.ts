@@ -280,6 +280,55 @@ export async function acknowledgeUndercoverRole(roomId: string): Promise<void> {
   }
 }
 
+// U-4.5 Host Force Acknowledge All Roles in Undercover
+export async function forceAcknowledgeAllUndercoverRoles(
+  roomId: string
+): Promise<void> {
+  const user = await ensureAuthUser();
+  try {
+    const [roomSnap, playersSnap] = await Promise.all([
+      getDoc(doc(db, 'rooms', roomId)),
+      getDocs(collection(db, 'rooms', roomId, 'players')),
+    ]);
+    const roomData = roomSnap.data() as FirestoreRoom | undefined;
+    const allPlayers = playersSnap.docs.map((d) => d.data() as FirestorePlayer);
+
+    for (const p of allPlayers) {
+      if (!p.roleAcknowledged) {
+        await updateDoc(doc(db, 'rooms', roomId, 'players', p.id), {
+          roleAcknowledged: true,
+        });
+      }
+    }
+
+    const duration = roomData?.clueDurationSeconds || 45;
+    const deadline = new Date(Date.now() + duration * 1000).toISOString();
+    const orderedAlive = getOrderedAlivePlayers(
+      allPlayers,
+      roomData?.undercoverTurnOrderIds,
+      roomData?.undercoverEliminatedIds || []
+    );
+    const firstPlayerData = orderedAlive[0] || allPlayers[0];
+    if (!firstPlayerData) return;
+
+    await updateDoc(doc(db, 'rooms', roomId), {
+      status: 'undercover_clue',
+      undercoverTurnIndex: 0,
+      undercoverTurnPlayerId: firstPlayerData.id,
+      undercoverTurnDeadline: deadline,
+      updatedAt: new Date().toISOString(),
+    });
+
+    if (isAutoControlledSeat(firstPlayerData, user.uid)) {
+      setTimeout(() => {
+        autoSimulateBotClue(roomId, firstPlayerData);
+      }, 1200);
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}`);
+  }
+}
+
 // Generate realistic Thai bot clue based on the word or pretend
 function generateBotClueText(word: string, isMrWhite: boolean): string {
   if (isMrWhite) {

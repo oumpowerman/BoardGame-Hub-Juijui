@@ -11,6 +11,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { UserProfile } from '../firebase/userService';
+import { PWAInstallButton } from './pwa/PWAInstallButton';
 
 export type ActiveSection =
   | 'catalog'
@@ -462,6 +463,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 3: Combined Account/Friends & Sign Out */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {/* PWA Install Button */}
+          <PWAInstallButton variant="navbar" />
+
           {/* Combined User Profile & Friends Pill Badge */}
           <button
             type="button"

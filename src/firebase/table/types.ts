@@ -145,6 +145,7 @@ export interface FirestoreRoom {
   cheeseNightPaused?: boolean; // Whether night countdown is paused by host
   // Cheese Thief iPad Table & Multi-Round Cumulative Scoreboard Fields
   ctIpadConnected?: boolean;
+  ctIpadUid?: string;
   ctIpadLastSeen?: string;
   ctRoundNumber?: number;
   ctScores?: Record<string, number>;

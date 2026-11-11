@@ -29,6 +29,7 @@ interface UndercoverPhasesProps {
   currentUid: string;
   isLoading: boolean;
   onAcknowledgeRole: () => void;
+  onForceAcknowledgeRoles?: () => void;
   onSubmitClue: (clueText: string) => void;
   onSubmitVote: (targetId: string) => void;
   onSubmitMrWhiteGuess: (guessedWord: string) => void;
@@ -42,6 +43,7 @@ export const UndercoverPhases: React.FC<UndercoverPhasesProps> = ({
   currentUid,
   isLoading,
   onAcknowledgeRole,
+  onForceAcknowledgeRoles,
   onSubmitClue,
   onSubmitVote,
   onSubmitMrWhiteGuess,
@@ -77,7 +79,7 @@ export const UndercoverPhases: React.FC<UndercoverPhasesProps> = ({
     (p) => p.id === currentRoom.undercoverTurnPlayerId
   );
 
-  // Turn timer countdown
+  // Turn timer countdown + automatic failover when deadline expires
   useEffect(() => {
     if (currentRoom.status !== 'undercover_clue') return;
     if (!currentRoom.undercoverTurnDeadline) {
@@ -85,17 +87,37 @@ export const UndercoverPhases: React.FC<UndercoverPhasesProps> = ({
       return;
     }
 
+    let autoAdvanced = false;
     const updateTimer = () => {
       const deadline = new Date(currentRoom.undercoverTurnDeadline!).getTime();
       const now = Date.now();
       const diff = Math.max(0, Math.ceil((deadline - now) / 1000));
       setClueSecondsLeft(diff);
+
+      if (diff <= 0 && !autoAdvanced) {
+        autoAdvanced = true;
+        const delayMs =
+          (isMyTurn || isHost) &&
+          typeof document !== 'undefined' &&
+          document.visibilityState === 'visible'
+            ? 400
+            : 2500;
+        window.setTimeout(() => {
+          onSubmitClue('หมดเวลาพูดคำใบ้ (ข้ามเทิร์นอัตโนมัติ)');
+        }, delayMs);
+      }
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [currentRoom.status, currentRoom.undercoverTurnDeadline]);
+  }, [
+    currentRoom.status,
+    currentRoom.undercoverTurnDeadline,
+    currentRoom.undercoverTurnPlayerId,
+    isMyTurn,
+    isHost,
+  ]);
 
   const handleSendClue = () => {
     const text = clueInput.trim();
@@ -315,6 +337,19 @@ export const UndercoverPhases: React.FC<UndercoverPhasesProps> = ({
                     </span>
                   ))}
                 </div>
+                {isHost &&
+                  onForceAcknowledgeRoles &&
+                  players.some((p) => !p.roleAcknowledged) && (
+                    <div className="pt-3">
+                      <button
+                        type="button"
+                        onClick={onForceAcknowledgeRoles}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-950 text-xs font-extrabold transition-colors cursor-pointer"
+                      >
+                        <span>⚡ โฮสต์บังคับข้ามคนที่ค้าง → เริ่มรอบบอกคำใบ้ทันที</span>
+                      </button>
+                    </div>
+                  )}
               </div>
             </div>
           </div>

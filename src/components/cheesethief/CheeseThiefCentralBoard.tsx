@@ -42,6 +42,7 @@ export interface CheeseThiefCentralBoardProps {
   onAdvanceNightHour: (targetHour: number) => void;
   onToggleNightPause: (isPaused: boolean) => void;
   onPlayAgain: () => void;
+  onForceAdvancePhase?: () => void;
 }
 
 export const CheeseThiefCentralBoard: React.FC<CheeseThiefCentralBoardProps> = ({
@@ -62,6 +63,7 @@ export const CheeseThiefCentralBoard: React.FC<CheeseThiefCentralBoardProps> = (
   onAdvanceNightHour,
   onToggleNightPause,
   onPlayAgain,
+  onForceAdvancePhase,
 }) => {
   const currentHour = room.nightHour || 1;
   const stolenHour = room.stolenHour || 0;
@@ -386,7 +388,7 @@ export const CheeseThiefCentralBoard: React.FC<CheeseThiefCentralBoardProps> = (
                     🧀
                   </motion.span>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="text-xs font-mono font-bold text-amber-300 uppercase">
                     {room.status === 'role_deal'
                       ? 'STEP 2 · ทุกคนดูการ์ดบทบาทลับในมือถือ'
@@ -400,6 +402,26 @@ export const CheeseThiefCentralBoard: React.FC<CheeseThiefCentralBoardProps> = (
                   <p className="text-xs text-slate-300">
                     เมื่อทุกคนกดยืนยันบนมือถือครบแล้ว คืนขโมยชีส (ตี 1 ถึง ตี 6) จะเริ่มต้นขึ้นทันที
                   </p>
+                  {onForceAdvancePhase && (
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={onForceAdvancePhase}
+                        className="px-4 py-2.5 rounded-2xl bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/50 text-amber-200 text-xs font-extrabold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        <FastForward className="w-3.5 h-3.5" />
+                        <span>
+                          {room.status === 'role_deal'
+                            ? `บังคับข้ามคนที่ค้าง → ไปทอยเต๋าทันที (${
+                                players.filter((p) => p.roleAcknowledged).length
+                              }/${players.length})`
+                            : `บังคับสุ่มเต๋าคนที่ค้าง → เริ่มคืนขโมยชีสทันที (${
+                                players.filter((p) => (p.diceHour || 0) > 0).length
+                              }/${players.length})`}
+                        </span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}

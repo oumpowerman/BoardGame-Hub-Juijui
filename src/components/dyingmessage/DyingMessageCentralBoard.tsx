@@ -33,6 +33,8 @@ interface DyingMessageCentralBoardProps {
   onToggleVoice: () => void;
   onSwitchToPhoneView: () => void;
   onOpenShareModal: () => void;
+  onStartGameFromBoard?: () => void;
+  onForceAcknowledgeRoles?: () => void;
   onStartVoting: () => void;
   onResolveAccusationOnBoard: (suspectId: string) => void;
   onContinueNextNight: () => void;
@@ -50,6 +52,8 @@ export const DyingMessageCentralBoard: React.FC<
   onToggleVoice,
   onSwitchToPhoneView,
   onOpenShareModal,
+  onStartGameFromBoard,
+  onForceAcknowledgeRoles,
   onStartVoting,
   onResolveAccusationOnBoard,
   onContinueNextNight,
@@ -141,6 +145,28 @@ export const DyingMessageCentralBoard: React.FC<
       </div>
 
       {/* 2. Active Phase Status Callout on Central Board */}
+      {room.status === 'lobby' && (
+        <div className="p-6 rounded-3xl bg-white border-2 border-sky-200 text-center space-y-4 shadow-xs">
+          <div className="text-4xl">📲</div>
+          <h3 className="text-xl sm:text-2xl font-black text-slate-900">
+            กระดานกลาง iPad เชื่อมต่อแล้ว! รอผู้เล่นเข้าโต๊ะ #{room.roomCode}
+          </h3>
+          <p className="text-sm text-slate-600 max-w-xl mx-auto">
+            ขณะนี้มีผู้เล่นในวง {players.length} คน (เครื่อง iPad นี้จะไม่ถูกนับเป็นผู้เล่น) เมื่อพร้อมแล้วสามารถกดเริ่มเกมจากมือถือโฮสต์ หรือกดปุ่มด้านล่างได้เลย
+          </p>
+          {onStartGameFromBoard && (
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={onStartGameFromBoard}
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-sm shadow-sm cursor-pointer transition-all"
+            >
+              <span>▶ เริ่มเกมเบาะแสมรณะทันที ({players.length} คน)</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {room.status === 'dm_role_deal' && (
         <div className="p-6 rounded-3xl bg-white border-2 border-amber-200 text-center space-y-3 shadow-xs">
           <div className="text-3xl">🃏</div>
@@ -165,6 +191,17 @@ export const DyingMessageCentralBoard: React.FC<
               </span>
             ))}
           </div>
+          {onForceAcknowledgeRoles && players.some((p) => !p.roleAcknowledged) && (
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={onForceAcknowledgeRoles}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-950 text-xs font-extrabold transition-colors cursor-pointer"
+              >
+                <span>⚡ บังคับข้ามคนที่ค้าง → เข้าสู่ยามค่ำคืนทันที</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 

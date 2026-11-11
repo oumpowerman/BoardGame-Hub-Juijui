@@ -6,6 +6,7 @@ import {
   submitVictimRealEvidenceCard,
   submitKillerFakeEvidenceCards,
   submitDetectiveInspection,
+  startDyingMessageVoting,
   castDyingMessageVote,
   isAutoControlledSeat,
 } from '../../firebase/tableService';
@@ -35,7 +36,7 @@ export function useDyingMessageGameMaster({
     isVoiceEnabled &&
     (isIpadBoardView || (!activeRoom?.dmIpadConnected && isHost));
 
-  // 1. Debate Countdown Timer during dm_day_discussion
+  // 1. Debate Countdown Timer during dm_day_discussion + failover auto-transition
   useEffect(() => {
     if (!activeRoom || activeRoom.status !== 'dm_day_discussion') {
       setDebateSecondsLeft(activeRoom?.dmDebateDurationSeconds || 180);
@@ -44,7 +45,24 @@ export function useDyingMessageGameMaster({
 
     setDebateSecondsLeft(activeRoom.dmDebateDurationSeconds || 180);
     const interval = window.setInterval(() => {
-      setDebateSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0));
+      setDebateSecondsLeft((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(interval);
+          const isPrimaryActive =
+            (isHost || isIpadBoardView) &&
+            typeof document !== 'undefined' &&
+            document.visibilityState === 'visible';
+          if (isPrimaryActive) {
+            startDyingMessageVoting(activeRoom.id);
+          } else {
+            window.setTimeout(() => {
+              startDyingMessageVoting(activeRoom.id);
+            }, 2200);
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     return () => window.clearInterval(interval);
@@ -53,6 +71,8 @@ export function useDyingMessageGameMaster({
     activeRoom?.status,
     activeRoom?.dmRoundNumber,
     activeRoom?.dmDebateDurationSeconds,
+    isHost,
+    isIpadBoardView,
   ]);
 
   // 2. Thai Game Master TTS Narration & Sound Effects
@@ -161,9 +181,14 @@ export function useDyingMessageGameMaster({
     shouldSpeakOnThisDevice,
   ]);
 
-  // 3. Automated Bot AI Controller (Runs on Host client or iPad board if Host is auto-controlling)
+  // 3. Automated Bot AI Controller (Runs on Host/iPad immediately, or any active client as fallback)
   useEffect(() => {
-    if (!activeRoom || (!isHost && !isIpadBoardView)) return;
+    if (!activeRoom) return;
+    const isPrimaryController =
+      (isHost || isIpadBoardView) &&
+      typeof document !== 'undefined' &&
+      document.visibilityState === 'visible';
+    const failoverOffsetMs = isPrimaryController ? 0 : 2000;
 
     const killer = players.find((p) => p.id === activeRoom.dmKillerId);
     const victim = players.find((p) => p.id === activeRoom.dmVictimId);
@@ -186,7 +211,7 @@ export function useDyingMessageGameMaster({
           const picked =
             candidates[Math.floor(Math.random() * candidates.length)];
           selectDyingMessageVictim(activeRoom.id, picked.id);
-        }, 1800);
+        }, 1800 + failoverOffsetMs);
         return () => window.clearTimeout(timer);
       }
     }

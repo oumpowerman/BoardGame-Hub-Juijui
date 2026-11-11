@@ -46,6 +46,10 @@ import { DetectiveClubLobby } from './DetectiveClubLobby';
 import { DetectiveClubPhases } from './DetectiveClubPhases';
 import { useDetectiveClubGameMaster } from './useDetectiveClubGameMaster';
 import { thaiGameMaster } from '../../utils/thaiGameMasterTTS';
+import {
+  saveActiveRoomSession,
+  clearActiveRoomSession,
+} from '../../utils/activeRoomPersistence';
 
 export interface DetectiveClubScreenProps {
   currentUser: UserProfile;
@@ -144,9 +148,11 @@ export const DetectiveClubScreen: React.FC<DetectiveClubScreenProps> = ({
     }
   }, [initialRoomCode]);
 
-  // Clean up any stale rooms previously hosted by current user
+  // Clean up any stale lobby rooms previously hosted by current user
   useEffect(() => {
-    const myHosted = rooms.filter((r) => r.hostId === currentUser.uid);
+    const myHosted = rooms.filter(
+      (r) => r.hostId === currentUser.uid && r.status === 'lobby'
+    );
     if (myHosted.length > 1) {
       const keepId = selectedRoomId || myHosted[0].id;
       cleanupHostPreviousRooms(currentUser.uid, keepId);
@@ -165,6 +171,15 @@ export const DetectiveClubScreen: React.FC<DetectiveClubScreenProps> = ({
     const unsubRoom = listenToRoom(selectedRoomId, (updatedRoom) => {
       setActiveRoom(updatedRoom);
       onActiveRoomChange?.(updatedRoom);
+      if (updatedRoom) {
+        saveActiveRoomSession({
+          roomId: updatedRoom.id,
+          roomCode: updatedRoom.roomCode,
+          gameId: 'detective-club',
+        });
+      } else {
+        clearActiveRoomSession();
+      }
     });
 
     const unsubPlayers = listenToRoomPlayers(selectedRoomId, (updatedPlayers) => {
@@ -272,6 +287,7 @@ export const DetectiveClubScreen: React.FC<DetectiveClubScreenProps> = ({
     const hostLeaving = targetRoom.hostId === currentUser.uid;
 
     await runLeaveRoomTransition(targetRoom.roomCode, async () => {
+      clearActiveRoomSession();
       setSelectedRoomId(null);
       setActiveRoom(null);
       setPlayers([]);
@@ -375,6 +391,9 @@ export const DetectiveClubScreen: React.FC<DetectiveClubScreenProps> = ({
     setErrorMessage(null);
 
     await runStartGameTransition(activeRoom.roomCode, async () => {
+      if (!players.some((p) => p.id === currentUser.uid)) {
+        await joinTableRoom(activeRoom.id, currentUser.accountName);
+      }
       await startDetectiveClubGame(activeRoom.id, discussionDurationSeconds);
     });
 

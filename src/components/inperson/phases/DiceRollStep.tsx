@@ -1,27 +1,33 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Dices } from 'lucide-react';
+import { Dices, FastForward } from 'lucide-react';
 import { FirestorePlayer } from '../../../firebase/tableService';
 
 interface DiceRollStepProps {
   players: FirestorePlayer[];
   myPlayer?: FirestorePlayer;
+  isHost?: boolean;
   isFourPlayerDualDice: boolean;
   rollingDice: boolean;
   rolledDicePair: number[];
   onRollDiceInCup: () => void;
   onConfirmDiceCupChoice: (primaryHour: number, secondaryHour?: number) => void;
+  onForceAdvancePhase?: () => void;
 }
 
 export const DiceRollStep: React.FC<DiceRollStepProps> = ({
   players,
   myPlayer,
+  isHost = false,
   isFourPlayerDualDice,
   rollingDice,
   rolledDicePair,
   onRollDiceInCup,
   onConfirmDiceCupChoice,
+  onForceAdvancePhase,
 }) => {
+  const unrolledPlayers = players.filter((p) => (p.diceHour || 0) <= 0);
+
   return (
     <motion.div
       key="phase-dice-roll"
@@ -166,10 +172,30 @@ export const DiceRollStep: React.FC<DiceRollStepProps> = ({
         )}
       </div>
 
-      <div className="text-xs text-slate-500 font-mono">
-        เลื่อนถ้วยเต๋าพร้อมแล้ว{' '}
-        {players.filter((p) => (p.diceHour || 0) > 0).length}/{players.length}{' '}
-        คน
+      <div className="space-y-2">
+        <div className="text-xs text-slate-500 font-mono">
+          เลื่อนถ้วยเต๋าพร้อมแล้ว{' '}
+          {players.filter((p) => (p.diceHour || 0) > 0).length}/{players.length}{' '}
+          คน
+          {unrolledPlayers.length > 0 && (
+            <span className="block text-[11px] text-amber-700 mt-0.5">
+              รอทอยเต๋า: {unrolledPlayers.map((p) => p.name).join(', ')}
+            </span>
+          )}
+        </div>
+
+        {isHost && unrolledPlayers.length > 0 && onForceAdvancePhase && (
+          <div>
+            <button
+              type="button"
+              onClick={onForceAdvancePhase}
+              className="px-4 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 text-xs font-extrabold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <FastForward className="w-3.5 h-3.5" />
+              <span>โฮสต์บังคับสุ่มเต๋าคนที่ค้าง → เริ่มคืนขโมยชีสทันที</span>
+            </button>
+          </div>
+        )}
       </div>
     </motion.div>
   );

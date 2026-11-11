@@ -21,10 +21,12 @@ import {
   addFriendToRoomSeat,
   cleanupHostPreviousRooms,
   leaveOrCloseTableRoom,
+  detachPlayerSeatForIpadMode,
   registerDyingMessageIpadBoard,
   updateDyingMessageLobbySettings,
   startDyingMessageGame,
   acknowledgeDyingMessageRole,
+  forceAcknowledgeAllDyingMessageRoles,
   selectDyingMessageVictim,
   submitVictimRealEvidenceCard,
   submitKillerFakeEvidenceCards,
@@ -42,6 +44,10 @@ import {
   sendRoomInviteToFriend,
 } from '../../firebase/userService';
 import { thaiGameMaster } from '../../utils/thaiGameMasterTTS';
+import {
+  saveActiveRoomSession,
+  clearActiveRoomSession,
+} from '../../utils/activeRoomPersistence';
 import { DyingMessageTopBar } from './DyingMessageTopBar';
 import { DyingMessageLobby } from './DyingMessageLobby';
 import { DyingMessageCentralBoard } from './DyingMessageCentralBoard';
@@ -168,9 +174,11 @@ export const DyingMessageScreen: React.FC<DyingMessageScreenProps> = ({
     }
   }, [initialRoomCode]);
 
-  // Clean up stale rooms hosted by current user
+  // Clean up stale lobby rooms hosted by current user
   useEffect(() => {
-    const myHosted = rooms.filter((r) => r.hostId === currentUser.uid);
+    const myHosted = rooms.filter(
+      (r) => r.hostId === currentUser.uid && r.status === 'lobby'
+    );
     if (myHosted.length > 1) {
       const keepId = selectedRoomId || myHosted[0].id;
       cleanupHostPreviousRooms(currentUser.uid, keepId);
@@ -188,6 +196,7 @@ export const DyingMessageScreen: React.FC<DyingMessageScreenProps> = ({
 
     const unsubRoom = listenToRoom(selectedRoomId, (roomData) => {
       if (!roomData) {
+        clearActiveRoomSession();
         setSelectedRoomId(null);
         setActiveRoom(null);
         setPlayers([]);
@@ -196,6 +205,12 @@ export const DyingMessageScreen: React.FC<DyingMessageScreenProps> = ({
       }
       setActiveRoom(roomData);
       onActiveRoomChange?.(roomData);
+      saveActiveRoomSession({
+        roomId: roomData.id,
+        roomCode: roomData.roomCode,
+        gameId: 'dying-message',
+        isIpadBoard: isIpadBoardView,
+      });
     });
 
     const unsubPlayers = listenToRoomPlayers(selectedRoomId, (playersList) => {
@@ -206,7 +221,7 @@ export const DyingMessageScreen: React.FC<DyingMessageScreenProps> = ({
       unsubRoom();
       unsubPlayers();
     };
-  }, [selectedRoomId]);
+  }, [selectedRoomId, isIpadBoardView]);
 
   const handleCreateRoom = async () => {
     setErrorMessage(null);
@@ -252,6 +267,7 @@ export const DyingMessageScreen: React.FC<DyingMessageScreenProps> = ({
 
         if (asIpadBoard) {
           await registerDyingMessageIpadBoard(targetRoom.id, true);
+          await detachPlayerSeatForIpadMode(targetRoom.id);
         } else {
           await joinTableRoom(
             targetRoom.id,
@@ -267,7 +283,7 @@ export const DyingMessageScreen: React.FC<DyingMessageScreenProps> = ({
         if (asIpadBoard) {
           setIsIpadBoardView(true);
           showToast(
-            `เชื่อมต่อจอ iPad กระดานกลางกับห้อง #${joined.roomCode} สำเร็จ!`
+            `เชื่อมต่อจอ iPad กระดานกลางกับห้อง #${joined.roomCode} สำเร็จ! (ถอดเก้าอี้ผู้เล่นออกอัตโนมัติแล้ว)`
           );
         }
       }
@@ -280,11 +296,20 @@ export const DyingMessageScreen: React.FC<DyingMessageScreenProps> = ({
     if (!activeRoom) return;
     const nextState = !isIpadBoardView;
     setIsIpadBoardView(nextState);
-    if (nextState && !activeRoom.dmIpadConnected) {
+    if (nextState) {
       await registerDyingMessageIpadBoard(activeRoom.id, true);
+      await detachPlayerSeatForIpadMode(activeRoom.id);
       showToast(
-        'เปิดโหมดจอ iPad กระดานกลางแล้ว · ข้อมูลซ้ำบนมือถือจะถูกซ่อนอัตโนมัติ'
+        'เปิดโหมดจอ iPad กระดานกลางแล้ว · ถอดเก้าอี้ผู้เล่นของเครื่องนี้ออกอัตโนมัติ'
       );
+    } else {
+      if (activeRoom.status === 'lobby') {
+        await joinTableRoom(
+          activeRoom.id,
+          currentUser.accountName,
+          currentUser.avatarUrl
+        );
+      }
     }
   };
 
@@ -295,6 +320,7 @@ export const DyingMessageScreen: React.FC<DyingMessageScreenProps> = ({
       return;
     }
     await runLeaveRoomTransition(activeRoom.roomCode, async () => {
+      clearActiveRoomSession();
       await leaveOrCloseTableRoom(activeRoom.id, activeRoom.hostId);
       setSelectedRoomId(null);
     });
@@ -304,6 +330,7 @@ export const DyingMessageScreen: React.FC<DyingMessageScreenProps> = ({
     if (!activeRoom) return;
     setIsDisbandModalOpen(false);
     await runLeaveRoomTransition(activeRoom.roomCode, async () => {
+      clearActiveRoomSession();
       await deleteTableRoom(activeRoom.id);
       setSelectedRoomId(null);
     });

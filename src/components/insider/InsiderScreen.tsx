@@ -36,6 +36,7 @@ import {
   addFriendToRoomSeat,
   cleanupHostPreviousRooms,
   leaveOrCloseTableRoom,
+  forceAcknowledgeAllInsiderRoles,
 } from '../../firebase/tableService';
 import {
   UserProfile,
@@ -44,6 +45,10 @@ import {
   dismissRoomInvite,
 } from '../../firebase/userService';
 import { thaiGameMaster } from '../../utils/thaiGameMasterTTS';
+import {
+  saveActiveRoomSession,
+  clearActiveRoomSession,
+} from '../../utils/activeRoomPersistence';
 
 // Subcomponents & Custom Hook for Insider
 import { InsiderTopBar } from './InsiderTopBar';
@@ -142,6 +147,7 @@ export const InsiderScreen: React.FC<InsiderScreenProps> = ({
     setIsHostVoiceEnabled,
     insiderRevealCountdown,
     setInsiderRevealCountdown,
+    insiderRevealStage,
     quizSecondsLeft,
     discussionSecondsLeft,
   } = useInsiderGameMaster({
@@ -162,9 +168,11 @@ export const InsiderScreen: React.FC<InsiderScreenProps> = ({
     }
   }, [initialRoomCode]);
 
-  // Clean up any stale rooms previously hosted by current user
+  // Clean up any stale lobby rooms previously hosted by current user
   useEffect(() => {
-    const myHosted = rooms.filter((r) => r.hostId === currentUser.uid);
+    const myHosted = rooms.filter(
+      (r) => r.hostId === currentUser.uid && r.status === 'lobby'
+    );
     if (myHosted.length > 1) {
       const keepId = selectedRoomId || myHosted[0].id;
       cleanupHostPreviousRooms(currentUser.uid, keepId);
@@ -183,6 +191,15 @@ export const InsiderScreen: React.FC<InsiderScreenProps> = ({
     const unsubRoom = listenToRoom(selectedRoomId, (updatedRoom) => {
       setActiveRoom(updatedRoom);
       onActiveRoomChange?.(updatedRoom);
+      if (updatedRoom) {
+        saveActiveRoomSession({
+          roomId: updatedRoom.id,
+          roomCode: updatedRoom.roomCode,
+          gameId: 'insider',
+        });
+      } else {
+        clearActiveRoomSession();
+      }
     });
 
     const unsubPlayers = listenToRoomPlayers(selectedRoomId, (updatedPlayers) => {
@@ -252,6 +269,7 @@ export const InsiderScreen: React.FC<InsiderScreenProps> = ({
     const isHost = targetRoom.hostId === currentUser.uid;
 
     await runLeaveRoomTransition(targetRoom.roomCode, async () => {
+      clearActiveRoomSession();
       setSelectedRoomId(null);
       setActiveRoom(null);
       setPlayers([]);
@@ -589,6 +607,7 @@ export const InsiderScreen: React.FC<InsiderScreenProps> = ({
                       currentUid={currentUser.uid}
                       isPeekingRole={isPeekingRole}
                       insiderRevealCountdown={insiderRevealCountdown}
+                      insiderRevealStage={insiderRevealStage}
                       quizSecondsLeft={quizSecondsLeft}
                       discussionSecondsLeft={discussionSecondsLeft}
                       selectedVoteTarget={selectedVoteTarget}
@@ -634,6 +653,9 @@ export const InsiderScreen: React.FC<InsiderScreenProps> = ({
                       onSelectVoteTarget={setSelectedVoteTarget}
                       onCastGeneralVote={handleCastGeneralVote}
                       onPlayAgain={handlePlayAgain}
+                      onForceAcknowledgeRoles={() =>
+                        forceAcknowledgeAllInsiderRoles(activeRoom.id)
+                      }
                     />
                   </motion.div>
                 )}

@@ -29,6 +29,7 @@ interface DyingMessagePhasesProps {
   debateSecondsLeft: number;
   isLoading: boolean;
   onAcknowledgeRole: () => void;
+  onForceAcknowledgeRoles?: () => void;
   onSelectVictim: (victimId: string) => void;
   onSubmitVictimRealClue: (cardId: string) => void;
   onSubmitKillerFakeClues: (cardIds: string[]) => void;
@@ -47,6 +48,7 @@ export const DyingMessagePhases: React.FC<DyingMessagePhasesProps> = ({
   debateSecondsLeft,
   isLoading,
   onAcknowledgeRole,
+  onForceAcknowledgeRoles,
   onSelectVictim,
   onSubmitVictimRealClue,
   onSubmitKillerFakeClues,
@@ -157,6 +159,18 @@ export const DyingMessagePhases: React.FC<DyingMessagePhasesProps> = ({
             เข้าใจบทบาทแล้ว · พร้อมเข้าสู่ยามค่ำคืน
           </button>
         )}
+
+        {(myPlayer?.isHost || room.hostId === currentUid) &&
+          onForceAcknowledgeRoles &&
+          players.some((p) => !p.roleAcknowledged) && (
+            <button
+              type="button"
+              onClick={onForceAcknowledgeRoles}
+              className="w-full py-2.5 px-4 rounded-xl bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-950 text-xs font-extrabold transition-colors cursor-pointer"
+            >
+              ⚡ โฮสต์บังคับข้ามคนที่ค้าง → เข้าสู่ยามค่ำคืนทันที
+            </button>
+          )}
       </div>
     );
   }

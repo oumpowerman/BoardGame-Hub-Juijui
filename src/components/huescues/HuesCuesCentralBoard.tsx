@@ -1,17 +1,16 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   ArrowUp,
   ArrowDown,
   ArrowLeft,
   ArrowRight,
   Tablet,
-  Smartphone,
   Target,
   Move,
-  Eye,
   CheckCircle2,
   Sparkles,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import {
   HUES_CUES_BOARD_TILES,
@@ -21,6 +20,7 @@ import {
   ROWS_COUNT,
   calculateTileDistance,
 } from '../../data/huesCuesColors';
+import { HuesCuesTile } from '../../types/huesCues';
 import { FirestorePlayer, HuesCuesGuessEntry } from '../../firebase/table/types';
 
 interface HuesCuesCentralBoardProps {
@@ -41,6 +41,138 @@ interface HuesCuesCentralBoardProps {
   canInteract: boolean;
 }
 
+// Stable empty array reference to avoid unnecessary re-renders in memoized tile cells
+const EMPTY_GUESSES: HuesCuesGuessEntry[] = [];
+
+// ============================================================================
+// MEMOIZED CELL COMPONENT FOR 480-TILE GRID (60 FPS on iPad with 6-10 players)
+// Replaces heavy Framer Motion instances with lightweight CSS GPU transforms
+// ============================================================================
+interface HuesCuesTileCellProps {
+  tile: HuesCuesTile;
+  isMyGuess: boolean;
+  tileGuesses: HuesCuesGuessEntry[];
+  distToSecret: number;
+  canInteract: boolean;
+  myUid: string;
+  onTileClick: (tileId: string) => void;
+  onTileDrop: (tileId: string, droppedUid?: string) => void;
+  onTokenDragStart: (playerUid: string) => void;
+}
+
+const HuesCuesTileCell = React.memo<HuesCuesTileCellProps>(
+  ({
+    tile,
+    isMyGuess,
+    tileGuesses,
+    distToSecret,
+    canInteract,
+    myUid,
+    onTileClick,
+    onTileDrop,
+    onTokenDragStart,
+  }) => {
+    const isBullseye = distToSecret === 0;
+    const isInnerFrame = distToSecret === 1;
+    const isOuterFrame = distToSecret === 2;
+
+    return (
+      <button
+        key={tile.id}
+        type="button"
+        onDragOver={(e) => {
+          if (canInteract) e.preventDefault();
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (!canInteract) return;
+          const droppedUid = e.dataTransfer.getData('text/plain');
+          onTileDrop(tile.id, droppedUid);
+        }}
+        onClick={() => {
+          if (!canInteract) return;
+          onTileClick(tile.id);
+        }}
+        style={{ backgroundColor: tile.hex }}
+        className={`relative aspect-square rounded-[3px] sm:rounded-md cursor-pointer border select-none transition-transform will-change-transform ${
+          canInteract ? 'active:scale-95 hover:scale-110 hover:z-25' : ''
+        } ${
+          isBullseye
+            ? 'ring-4 ring-rose-600 border-2 border-white z-30 scale-110 shadow-lg'
+            : isInnerFrame
+            ? 'ring-2 ring-amber-400 border-2 border-white z-20'
+            : isOuterFrame
+            ? 'ring-1 ring-white/90 border border-dashed border-slate-900/60 z-10'
+            : isMyGuess
+            ? 'ring-2 ring-slate-950 border-2 border-white z-20 scale-105 shadow-md'
+            : 'border-black/10 hover:border-white'
+        }`}
+        title={`ช่อง ${tile.id}`}
+      >
+        {/* Bullseye Target Score Indicator on Reveal */}
+        {isBullseye && (
+          <span className="absolute -top-2 -right-2 z-40 px-1 py-0.2 bg-rose-600 text-white text-[8px] font-mono font-black rounded shadow pointer-events-none">
+            3pt
+          </span>
+        )}
+
+        {/* Draggable Player Token Badges on this Tile */}
+        {tileGuesses.length > 0 && (
+          <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-0.5 p-0.5 pointer-events-none">
+            {tileGuesses.map((g) => (
+              <div
+                key={g.uid}
+                draggable={canInteract}
+                onDragStart={(e) => {
+                  e.stopPropagation();
+                  e.dataTransfer.setData('text/plain', g.uid);
+                  onTokenDragStart(g.uid);
+                }}
+                className={`w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-[7px] sm:text-[10px] font-black shadow-md border border-white cursor-grab active:cursor-grabbing pointer-events-auto ${
+                  g.uid === myUid
+                    ? 'bg-amber-400 text-amber-950 ring-1 ring-black/40'
+                    : 'bg-slate-900 text-white'
+                }`}
+                title={`${g.playerName} (${tile.id})`}
+              >
+                {g.playerName.slice(0, 1).toUpperCase()}
+              </div>
+            ))}
+          </div>
+        )}
+      </button>
+    );
+  },
+  (prev, next) => {
+    // Ultra-fast shallow memo comparison for skipping unmodified grid cells
+    if (
+      prev.tile.id !== next.tile.id ||
+      prev.isMyGuess !== next.isMyGuess ||
+      prev.distToSecret !== next.distToSecret ||
+      prev.canInteract !== next.canInteract ||
+      prev.myUid !== next.myUid
+    ) {
+      return false;
+    }
+    if (prev.tileGuesses === next.tileGuesses) {
+      return true;
+    }
+    if (prev.tileGuesses.length !== next.tileGuesses.length) {
+      return false;
+    }
+    for (let i = 0; i < prev.tileGuesses.length; i++) {
+      if (
+        prev.tileGuesses[i].uid !== next.tileGuesses[i].uid ||
+        prev.tileGuesses[i].playerName !== next.tileGuesses[i].playerName
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+);
+HuesCuesTileCell.displayName = 'HuesCuesTileCell';
+
 export const HuesCuesCentralBoard: React.FC<HuesCuesCentralBoardProps> = ({
   onSelectTile,
   guesses,
@@ -59,34 +191,117 @@ export const HuesCuesCentralBoard: React.FC<HuesCuesCentralBoardProps> = ({
   const [activeIpadPlayerId, setActiveIpadPlayerId] = useState<string>('');
   const [draggedPlayerId, setDraggedPlayerId] = useState<string | null>(null);
 
+  // iPad Fullscreen Mode State & DOM Reference
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const boardContainerRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!isFullscreen) {
+        if (boardContainerRef.current?.requestFullscreen) {
+          await boardContainerRef.current.requestFullscreen();
+        }
+        setIsFullscreen(true);
+      } else {
+        if (document.fullscreenElement && document.exitFullscreen) {
+          await document.exitFullscreen();
+        }
+        setIsFullscreen(false);
+      }
+    } catch {
+      // CSS Viewport Overlay Fallback for iOS Safari & strict iframes
+      setIsFullscreen((prev) => !prev);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   const effectiveIpadPlayerId =
     activeIpadPlayerId && guesserPlayers.some((p) => p.id === activeIpadPlayerId)
       ? activeIpadPlayerId
       : guesserPlayers[0]?.id || myUid;
 
-  // Map tileId -> array of player guesses on this tile (for iPad display)
-  const tilesWithGuesses: Record<string, HuesCuesGuessEntry[]> = {};
-  Object.values(guesses).forEach((g) => {
-    if (!tilesWithGuesses[g.tileId]) {
-      tilesWithGuesses[g.tileId] = [];
-    }
-    tilesWithGuesses[g.tileId].push(g);
-  });
+  // Memoized map: tileId -> array of player guesses (avoids rebuilding array references every render)
+  const tilesWithGuesses = useMemo(() => {
+    const map: Record<string, HuesCuesGuessEntry[]> = {};
+    Object.values(guesses).forEach((g) => {
+      if (!map[g.tileId]) {
+        map[g.tileId] = [];
+      }
+      map[g.tileId].push(g);
+    });
+    return map;
+  }, [guesses]);
 
   const myCurrentGuess = guesses[myUid];
-  const currentTileObj = mySelectedTileId
-    ? HUES_CUES_TILE_MAP[mySelectedTileId]
-    : undefined;
+
+  // --------------------------------------------------------------------------
+  // OPTIMISTIC LOCAL STATE + 150ms DEBOUNCED FIRESTORE SYNC (Phone Remote)
+  // Provides instantaneous 0ms token feedback on mobile while preventing
+  // Firestore write congestion when 6-10 players nudge concurrently.
+  // --------------------------------------------------------------------------
+  const [localTileId, setLocalTileId] = useState<string>(
+    mySelectedTileId || 'K12'
+  );
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isNudgingRef = useRef<boolean>(false);
+
+  // Sync server tile position into local state when not actively nudging
+  useEffect(() => {
+    if (!isNudgingRef.current && mySelectedTileId) {
+      setLocalTileId(mySelectedTileId);
+    }
+  }, [mySelectedTileId]);
+
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  const scheduleNudge = useCallback(
+    (nextId: string) => {
+      // 1. Instant local optimistic update (0ms UI latency on phone screen)
+      setLocalTileId(nextId);
+      isNudgingRef.current = true;
+
+      // 2. Clear existing debounced timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      // 3. Debounce network broadcast to Firestore (150ms)
+      debounceTimerRef.current = setTimeout(() => {
+        isNudgingRef.current = false;
+        onSelectTile(nextId, myUid, 'phone');
+      }, 150);
+    },
+    [myUid, onSelectTile]
+  );
 
   // Directional Nudge Handler (Up / Down / Left / Right by 1 square)
   const handleNudge = (dCol: number, dRow: number) => {
     if (!canInteract || isClueGiver) return;
-    const baseTile = currentTileObj || HUES_CUES_TILE_MAP['K12'];
+    const baseTile =
+      HUES_CUES_TILE_MAP[localTileId] ||
+      (mySelectedTileId ? HUES_CUES_TILE_MAP[mySelectedTileId] : undefined) ||
+      HUES_CUES_TILE_MAP['K12'];
     if (!baseTile) return;
     const nextCol = Math.max(0, Math.min(COLS_COUNT - 1, baseTile.col + dCol));
     const nextRow = Math.max(0, Math.min(ROWS_COUNT - 1, baseTile.row + dRow));
     const nextId = `${COL_LETTERS[nextCol]}${nextRow + 1}`;
-    onSelectTile(nextId, myUid, 'phone');
+    scheduleNudge(nextId);
   };
 
   // Direct Coordinate Dropdown Picker
@@ -94,12 +309,42 @@ export const HuesCuesCentralBoard: React.FC<HuesCuesCentralBoardProps> = ({
     if (!canInteract || isClueGiver) return;
     const nextId = `${newColLetter}${newRowNum}`;
     if (HUES_CUES_TILE_MAP[nextId]) {
-      onSelectTile(nextId, myUid, 'phone');
+      scheduleNudge(nextId);
     }
   };
 
+  const activePhoneTileObj =
+    HUES_CUES_TILE_MAP[localTileId] ||
+    (mySelectedTileId ? HUES_CUES_TILE_MAP[mySelectedTileId] : undefined);
+
+  // Memoized handlers for iPad Grid to keep cell props reference-equal
+  const handleTileClick = useCallback(
+    (tileId: string) => {
+      if (!canInteract) return;
+      onSelectTile(tileId, effectiveIpadPlayerId, 'ipad');
+    },
+    [canInteract, effectiveIpadPlayerId, onSelectTile]
+  );
+
+  const handleTileDrop = useCallback(
+    (tileId: string, droppedUid?: string) => {
+      if (!canInteract) return;
+      const targetUid = droppedUid || draggedPlayerId || effectiveIpadPlayerId;
+      if (targetUid) {
+        onSelectTile(tileId, targetUid, 'ipad');
+      }
+      setDraggedPlayerId(null);
+    },
+    [canInteract, draggedPlayerId, effectiveIpadPlayerId, onSelectTile]
+  );
+
+  const handleTokenDragStart = useCallback((playerUid: string) => {
+    setDraggedPlayerId(playerUid);
+    setActiveIpadPlayerId(playerUid);
+  }, []);
+
   // ==========================================================================
-  // VIEW A: PHONE COMPANION REMOTE (No 480 grid - Look at the Central iPad!)
+  // VIEW A: PHONE COMPANION REMOTE (Optimistic 0ms UI with 150ms Debounced Sync)
   // ==========================================================================
   if (!isIpadMode) {
     return (
@@ -144,27 +389,35 @@ export const HuesCuesCentralBoard: React.FC<HuesCuesCentralBoardProps> = ({
                 <div
                   className="w-14 h-14 rounded-2xl border-2 border-white shadow-md flex items-center justify-center font-mono text-sm font-black text-white drop-shadow-xs shrink-0 transition-all"
                   style={{
-                    backgroundColor: currentTileObj ? currentTileObj.hex : '#E2E8F0',
+                    backgroundColor: activePhoneTileObj
+                      ? activePhoneTileObj.hex
+                      : '#E2E8F0',
                   }}
                 >
-                  {mySelectedTileId || '—'}
+                  {localTileId || '—'}
                 </div>
                 <div className="min-w-0">
                   <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     ตำแหน่งหมากของคุณ
                   </div>
                   <div className="text-base sm:text-lg font-black text-slate-900 font-mono flex items-center gap-2">
-                    <span>{mySelectedTileId ? `พิกัด ${mySelectedTileId}` : 'ยังไม่ได้วางหมาก'}</span>
-                    {mySelectedTileId && (
+                    <span>
+                      {localTileId ? `พิกัด ${localTileId}` : 'ยังไม่ได้วางหมาก'}
+                    </span>
+                    {localTileId && (
                       <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     )}
                   </div>
                   <div className="text-[11px] text-slate-500 font-medium">
-                    {myCurrentGuess?.updatedBy === 'ipad' ? (
+                    {isNudgingRef.current ? (
+                      <span className="text-amber-700 font-bold animate-pulse">
+                        ⚡ กำลังซิงค์ไป iPad...
+                      </span>
+                    ) : myCurrentGuess?.updatedBy === 'ipad' ? (
                       <span className="text-pink-700 font-bold">
                         ⚡ ปรับตำแหน่งจากจอ iPad
                       </span>
-                    ) : mySelectedTileId ? (
+                    ) : localTileId ? (
                       <span className="text-emerald-700 font-bold">
                         ✓ ซิงค์แสดงบน iPad แล้ว
                       </span>
@@ -203,11 +456,11 @@ export const HuesCuesCentralBoard: React.FC<HuesCuesCentralBoardProps> = ({
                   <select
                     aria-label="เลือกตัวอักษรคอลัมน์"
                     disabled={!canInteract}
-                    value={currentTileObj ? COL_LETTERS[currentTileObj.col] : 'K'}
+                    value={activePhoneTileObj ? COL_LETTERS[activePhoneTileObj.col] : 'K'}
                     onChange={(e) =>
                       handleCoordChange(
                         e.target.value,
-                        currentTileObj ? currentTileObj.row + 1 : 12
+                        activePhoneTileObj ? activePhoneTileObj.row + 1 : 12
                       )
                     }
                     className="w-full px-3 py-2.5 bg-white border border-amber-300 rounded-xl text-xs sm:text-sm font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
@@ -227,10 +480,10 @@ export const HuesCuesCentralBoard: React.FC<HuesCuesCentralBoardProps> = ({
                   <select
                     aria-label="เลือกแถวตัวเลข"
                     disabled={!canInteract}
-                    value={currentTileObj ? currentTileObj.row + 1 : 12}
+                    value={activePhoneTileObj ? activePhoneTileObj.row + 1 : 12}
                     onChange={(e) =>
                       handleCoordChange(
-                        currentTileObj ? COL_LETTERS[currentTileObj.col] : 'K',
+                        activePhoneTileObj ? COL_LETTERS[activePhoneTileObj.col] : 'K',
                         Number(e.target.value)
                       )
                     }
@@ -280,8 +533,8 @@ export const HuesCuesCentralBoard: React.FC<HuesCuesCentralBoardProps> = ({
                     <ArrowLeft className="w-5 h-5" />
                   </button>
 
-                  <div className="w-16 h-11 bg-slate-900 text-white rounded-xl flex items-center justify-center font-mono font-black text-xs shadow-2xs">
-                    {mySelectedTileId || '—'}
+                  <div className="w-16 h-11 bg-slate-900 text-white rounded-xl flex items-center justify-center font-mono font-black text-xs shadow-2xs transition-all">
+                    {localTileId || '—'}
                   </div>
 
                   <button
@@ -314,47 +567,110 @@ export const HuesCuesCentralBoard: React.FC<HuesCuesCentralBoardProps> = ({
   }
 
   // ==========================================================================
-  // VIEW B: CENTRAL IPAD BOARD (Full 480-Tile Spectrum Grid with Live Tokens)
+  // VIEW B: CENTRAL IPAD BOARD (Auto-Fit & Fullscreen Theater Mode at 60 FPS)
   // ==========================================================================
   return (
-    <div className="w-full bg-white/95 backdrop-blur-md rounded-3xl p-3 sm:p-5 shadow-xl border border-pink-200 space-y-3">
-      {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-pink-100">
+    <div
+      ref={boardContainerRef}
+      className={
+        isFullscreen
+          ? 'fixed inset-0 z-50 bg-slate-950 text-white p-3 sm:p-5 flex flex-col justify-between overflow-y-auto w-screen h-screen select-none'
+          : 'w-full bg-white/95 backdrop-blur-md rounded-3xl p-3 sm:p-5 shadow-xl border border-pink-200 space-y-3'
+      }
+    >
+      {/* Header Bar with Fullscreen Toggle */}
+      <div
+        className={`flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b ${
+          isFullscreen ? 'border-slate-800' : 'border-pink-100'
+        }`}
+      >
         <div>
-          <h2 className="text-sm sm:text-base font-extrabold text-slate-900 font-display flex items-center gap-2">
-            <Tablet className="w-4 h-4 text-pink-600 shrink-0" />
+          <h2
+            className={`text-sm sm:text-base font-extrabold font-display flex items-center gap-2 ${
+              isFullscreen ? 'text-white' : 'text-slate-900'
+            }`}
+          >
+            <Tablet
+              className={`w-4 h-4 shrink-0 ${
+                isFullscreen ? 'text-pink-400' : 'text-pink-600'
+              }`}
+            />
             <span>กระดานสีกลาง iPad (480 ช่อง · ซิงค์สองทางกับโทรศัพท์ทุกคน)</span>
           </h2>
-          <p className="text-xs text-slate-500">
+          <p
+            className={`text-xs ${
+              isFullscreen ? 'text-slate-400' : 'text-slate-500'
+            }`}
+          >
             ลากหมากชื่อผู้เล่นไปวางบนช่องสี หรือแตะชื่อด้านล่างแล้วจิ้มช่องสี (โทรศัพท์ของผู้เล่นจะซิงค์ตามทันที)
           </p>
         </div>
 
-        {showSecret && secretTileId && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-300 rounded-xl">
-            <Target className="w-4 h-4 text-rose-600" />
-            <span className="text-xs font-bold text-rose-900 font-mono tabular-nums">
-              สีเป้าหมาย: {secretTileId}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {showSecret && secretTileId && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-300 rounded-xl">
+              <Target className="w-4 h-4 text-rose-600" />
+              <span className="text-xs font-bold text-rose-900 font-mono tabular-nums">
+                สีเป้าหมาย: {secretTileId}
+              </span>
+            </div>
+          )}
+
+          {/* iPad Fullscreen Theater Mode Button */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
+              isFullscreen
+                ? 'bg-amber-400 text-amber-950 hover:bg-amber-300 border border-amber-300'
+                : 'bg-pink-100 hover:bg-pink-200 text-pink-950 border border-pink-300'
+            }`}
+            title={isFullscreen ? 'ย่อกลับเป็นขนาดปกติ' : 'ขยายกระดานเต็มหน้าจอ iPad'}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize2 className="w-3.5 h-3.5" />
+                <span>ย่อจอ</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span>ขยายเต็มจอ iPad</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* iPad Mode: Draggable & Selectable Player Token Dock */}
       {guesserPlayers.length > 0 && (
-        <div className="p-3 bg-pink-50/70 border border-pink-200 rounded-2xl space-y-2">
-          <div className="flex items-center justify-between gap-2 text-xs font-bold text-pink-950">
+        <div
+          className={`p-2.5 sm:p-3 rounded-2xl space-y-1.5 sm:space-y-2 border ${
+            isFullscreen
+              ? 'bg-slate-900/90 border-slate-800'
+              : 'bg-pink-50/70 border-pink-200'
+          }`}
+        >
+          <div
+            className={`flex items-center justify-between gap-2 text-xs font-bold ${
+              isFullscreen ? 'text-pink-300' : 'text-pink-950'
+            }`}
+          >
             <span className="inline-flex items-center gap-1.5">
-              <Move className="w-3.5 h-3.5 text-pink-600" />
+              <Move className="w-3.5 h-3.5 text-pink-500" />
               <span>
                 หมากผู้เล่นบนกระดาน iPad (ลากหมากไปวางบนช่องสี หรือแตะชื่อแล้วจิ้มช่องสี):
               </span>
             </span>
-            <span className="text-[11px] text-pink-700 font-mono">
+            <span
+              className={`text-[11px] font-mono ${
+                isFullscreen ? 'text-pink-400' : 'text-pink-700'
+              }`}
+            >
               ซิงค์ไปที่มือถือผู้เล่นอัตโนมัติ
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {guesserPlayers.map((p) => {
               const pGuess = guesses[p.id];
               const pTile = pGuess ? HUES_CUES_TILE_MAP[pGuess.tileId] : undefined;
@@ -371,14 +687,18 @@ export const HuesCuesCentralBoard: React.FC<HuesCuesCentralBoardProps> = ({
                   }}
                   onDragEnd={() => setDraggedPlayerId(null)}
                   onClick={() => setActiveIpadPlayerId(p.id)}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-grab active:cursor-grabbing select-none ${
+                  className={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-xs font-bold transition-all cursor-grab active:cursor-grabbing select-none ${
                     isSelectedForTap
-                      ? 'bg-slate-900 text-white border-slate-900 shadow-sm scale-[1.02]'
+                      ? isFullscreen
+                        ? 'bg-amber-400 text-amber-950 border-amber-300 shadow-sm scale-[1.02]'
+                        : 'bg-slate-900 text-white border-slate-900 shadow-sm scale-[1.02]'
+                      : isFullscreen
+                      ? 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
                       : 'bg-white text-slate-800 border-pink-200 hover:bg-pink-100/50'
                   }`}
                 >
                   <span
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black border border-white shadow-2xs"
+                    className="w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-black border border-white shadow-2xs"
                     style={{
                       backgroundColor: pTile ? pTile.hex : '#F472B6',
                       color: '#fff',
@@ -386,11 +706,13 @@ export const HuesCuesCentralBoard: React.FC<HuesCuesCentralBoardProps> = ({
                   >
                     {p.name.slice(0, 1).toUpperCase()}
                   </span>
-                  <span>{p.name}</span>
+                  <span className="truncate max-w-[90px]">{p.name}</span>
                   <span
-                    className={`font-mono text-[11px] px-1.5 py-0.5 rounded-md ${
+                    className={`font-mono text-[10px] sm:text-[11px] px-1.5 py-0.5 rounded-md ${
                       isSelectedForTap
-                        ? 'bg-amber-400 text-amber-950 font-black'
+                        ? 'bg-slate-900 text-white font-black'
+                        : isFullscreen
+                        ? 'bg-slate-900 text-slate-300'
                         : 'bg-slate-100 text-slate-700'
                     }`}
                   >
@@ -403,14 +725,35 @@ export const HuesCuesCentralBoard: React.FC<HuesCuesCentralBoardProps> = ({
         </div>
       )}
 
-      {/* 480-Tile Color Spectrum Grid on iPad */}
-      <div className="overflow-x-auto pb-2">
-        <div className="select-none min-w-[680px] w-full">
+      {/* 480-Tile Color Spectrum Grid: Auto-fit on iPad & Fullscreen Support */}
+      <div
+        className={
+          isFullscreen
+            ? 'flex-1 flex flex-col items-center justify-center p-1 w-full min-h-0'
+            : 'overflow-x-auto pb-2 scrollbar-thin'
+        }
+      >
+        <div
+          className={
+            isFullscreen
+              ? 'w-full max-w-[860px] max-h-[75vh] aspect-[20/24] flex flex-col justify-center select-none mx-auto'
+              : 'select-none w-full min-w-[560px] sm:min-w-0 max-w-full mx-auto'
+          }
+        >
           {/* Column Header Letters A - T */}
-          <div className="grid grid-cols-[28px_repeat(20,minmax(0,1fr))] gap-0.5 sm:gap-1 mb-1 text-center text-[10px] sm:text-xs font-mono font-bold text-slate-600">
+          <div
+            className={`grid grid-cols-[20px_repeat(20,minmax(0,1fr))] sm:grid-cols-[28px_repeat(20,minmax(0,1fr))] gap-0.5 sm:gap-1 mb-1 text-center text-[8px] sm:text-xs font-mono font-bold ${
+              isFullscreen ? 'text-slate-400' : 'text-slate-600'
+            }`}
+          >
             <div />
             {COL_LETTERS.map((letter) => (
-              <div key={letter} className="py-0.5 bg-slate-100 rounded">
+              <div
+                key={letter}
+                className={`py-0.5 rounded text-center ${
+                  isFullscreen ? 'bg-slate-900 text-slate-300' : 'bg-slate-100'
+                }`}
+              >
                 {letter}
               </div>
             ))}
@@ -423,99 +766,41 @@ export const HuesCuesCentralBoard: React.FC<HuesCuesCentralBoardProps> = ({
               return (
                 <div
                   key={`row-${rowNumber}`}
-                  className="grid grid-cols-[28px_repeat(20,minmax(0,1fr))] gap-0.5 sm:gap-1 items-center"
+                  className="grid grid-cols-[20px_repeat(20,minmax(0,1fr))] sm:grid-cols-[28px_repeat(20,minmax(0,1fr))] gap-0.5 sm:gap-1 items-center"
                 >
                   {/* Row Number Label */}
-                  <div className="text-center text-[10px] sm:text-xs font-mono font-bold text-slate-600 py-0.5 bg-slate-100 rounded tabular-nums">
+                  <div
+                    className={`text-center text-[8px] sm:text-xs font-mono font-bold py-0.5 rounded tabular-nums ${
+                      isFullscreen
+                        ? 'bg-slate-900 text-slate-300'
+                        : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
                     {rowNumber}
                   </div>
 
-                  {/* 20 Color Tiles in this row */}
+                  {/* 20 Color Tiles in this row (Memoized Subcomponents) */}
                   {rowTiles.map((tile) => {
                     const isMyGuess = mySelectedTileId === tile.id;
-                    const tileGuesses = tilesWithGuesses[tile.id] || [];
+                    const tileGuesses = tilesWithGuesses[tile.id] || EMPTY_GUESSES;
                     const distToSecret =
                       showSecret && secretTileId
                         ? calculateTileDistance(tile.id, secretTileId)
                         : 999;
-                    const isBullseye = distToSecret === 0;
-                    const isInnerFrame = distToSecret === 1;
-                    const isOuterFrame = distToSecret === 2;
 
                     return (
-                      <motion.button
+                      <HuesCuesTileCell
                         key={tile.id}
-                        type="button"
-                        whileHover={
-                          canInteract ? { scale: 1.18, zIndex: 25 } : undefined
-                        }
-                        whileTap={canInteract ? { scale: 0.94 } : undefined}
-                        onDragOver={(e) => {
-                          if (canInteract) e.preventDefault();
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          if (!canInteract) return;
-                          const droppedUid =
-                            e.dataTransfer.getData('text/plain') ||
-                            draggedPlayerId ||
-                            effectiveIpadPlayerId;
-                          if (droppedUid) {
-                            onSelectTile(tile.id, droppedUid, 'ipad');
-                          }
-                          setDraggedPlayerId(null);
-                        }}
-                        onClick={() => {
-                          if (!canInteract) return;
-                          onSelectTile(tile.id, effectiveIpadPlayerId, 'ipad');
-                        }}
-                        style={{ backgroundColor: tile.hex }}
-                        className={`relative aspect-square rounded-[4px] sm:rounded-md transition-transform cursor-pointer border ${
-                          isBullseye
-                            ? 'ring-4 ring-rose-600 border-2 border-white z-30 scale-110 shadow-lg'
-                            : isInnerFrame
-                            ? 'ring-2 ring-amber-400 border-2 border-white z-20'
-                            : isOuterFrame
-                            ? 'ring-1 ring-white/90 border border-dashed border-slate-900/60 z-10'
-                            : isMyGuess
-                            ? 'ring-2 ring-slate-950 border-2 border-white z-20 scale-105 shadow-md'
-                            : 'border-black/10 hover:border-white'
-                        }`}
-                        title={`ช่อง ${tile.id}`}
-                      >
-                        {/* Bullseye Target Icon on Reveal */}
-                        {isBullseye && (
-                          <span className="absolute -top-2 -right-2 z-40 px-1 py-0.2 bg-rose-600 text-white text-[8px] font-mono font-black rounded shadow">
-                            3pt
-                          </span>
-                        )}
-
-                        {/* Draggable Player Token Badges on this Tile */}
-                        {tileGuesses.length > 0 && (
-                          <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-0.5 p-0.5">
-                            {tileGuesses.map((g) => (
-                              <div
-                                key={g.uid}
-                                draggable={canInteract}
-                                onDragStart={(e) => {
-                                  e.stopPropagation();
-                                  setDraggedPlayerId(g.uid);
-                                  setActiveIpadPlayerId(g.uid);
-                                  e.dataTransfer.setData('text/plain', g.uid);
-                                }}
-                                className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-[8px] sm:text-[10px] font-black shadow-md border border-white cursor-grab active:cursor-grabbing ${
-                                  g.uid === myUid
-                                    ? 'bg-amber-400 text-amber-950'
-                                    : 'bg-slate-900 text-white'
-                                }`}
-                                title={`${g.playerName} (${tile.id})`}
-                              >
-                                {g.playerName.slice(0, 1).toUpperCase()}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </motion.button>
+                        tile={tile}
+                        isMyGuess={isMyGuess}
+                        tileGuesses={tileGuesses}
+                        distToSecret={distToSecret}
+                        canInteract={canInteract}
+                        myUid={myUid}
+                        onTileClick={handleTileClick}
+                        onTileDrop={handleTileDrop}
+                        onTokenDragStart={handleTokenDragStart}
+                      />
                     );
                   })}
                 </div>
@@ -527,7 +812,13 @@ export const HuesCuesCentralBoard: React.FC<HuesCuesCentralBoardProps> = ({
 
       {/* Scoring Legend when Secret Target Frame is Revealed */}
       {showSecret && (
-        <div className="pt-2 border-t border-pink-100 flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-slate-700">
+        <div
+          className={`pt-2 border-t flex flex-wrap items-center justify-center gap-3 sm:gap-5 text-xs font-bold ${
+            isFullscreen
+              ? 'border-slate-800 text-slate-300'
+              : 'border-pink-100 text-slate-700'
+          }`}
+        >
           <span className="inline-flex items-center gap-1.5">
             <span className="w-3.5 h-3.5 rounded bg-rose-600 inline-block ring-2 ring-rose-300" />
             <span>ตรงช่องเป้าหมายเป๊ะ: +3 คะแนน</span>

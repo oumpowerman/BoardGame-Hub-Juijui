@@ -30,6 +30,7 @@ interface InsiderPhasesProps {
   currentUid: string;
   isPeekingRole: boolean;
   insiderRevealCountdown: number | null;
+  insiderRevealStage?: 'idle' | 'master_closing' | 'insider_peeking';
   quizSecondsLeft: number;
   discussionSecondsLeft: number;
   selectedVoteTarget: string;
@@ -46,6 +47,7 @@ interface InsiderPhasesProps {
   onSelectVoteTarget: (targetId: string) => void;
   onCastGeneralVote: () => void;
   onPlayAgain: () => void;
+  onForceAcknowledgeRoles?: () => void;
 }
 
 const INSIDER_STEP_LIST: { step: number; phases: GamePhase[]; label: string }[] = [
@@ -67,6 +69,7 @@ export const InsiderPhases: React.FC<InsiderPhasesProps> = ({
   currentUid,
   isPeekingRole,
   insiderRevealCountdown,
+  insiderRevealStage = 'idle',
   quizSecondsLeft,
   discussionSecondsLeft,
   selectedVoteTarget,
@@ -83,6 +86,7 @@ export const InsiderPhases: React.FC<InsiderPhasesProps> = ({
   onSelectVoteTarget,
   onCastGeneralVote,
   onPlayAgain,
+  onForceAcknowledgeRoles,
 }) => {
   const [customWordInput, setCustomWordInput] = useState<string>('');
   const [selectedRerollCat, setSelectedRerollCat] = useState<InsiderWordCategoryId>(
@@ -253,6 +257,19 @@ export const InsiderPhases: React.FC<InsiderPhasesProps> = ({
               <div className="text-xs text-slate-500 font-mono pt-2">
                 พร้อมแล้ว {players.filter((p) => p.roleAcknowledged).length}/{players.length} คน
               </div>
+              {isMasterOrHost &&
+                onForceAcknowledgeRoles &&
+                players.some((p) => !p.roleAcknowledged) && (
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={onForceAcknowledgeRoles}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-950 text-xs font-extrabold transition-colors cursor-pointer"
+                    >
+                      <span>⚡ โฮสต์บังคับข้ามคนที่ค้าง → ไปเปิดดูคำศัพท์ลับทันที</span>
+                    </button>
+                  </div>
+                )}
             </div>
           </motion.div>
         )}
@@ -401,17 +418,35 @@ export const InsiderPhases: React.FC<InsiderPhasesProps> = ({
                 {/* Action Button to Trigger Insider Wake & Quiz Start */}
                 <div className="pt-2 space-y-2">
                   {currentRoom.insiderEyesOpen ? (
-                    <div className="p-4 bg-rose-600 text-white rounded-2xl text-center space-y-2 shadow-md">
-                      <div className="text-sm font-black">
-                        🕵️ ขณะนี้ระบบกำลังเปิดคำศัพท์ให้ Insider แอบดู ({insiderRevealCountdown ?? 6} วินาที)...
+                    <div className="p-4 bg-gradient-to-br from-rose-600 to-amber-600 text-white rounded-2xl text-center space-y-2.5 shadow-md">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/20 text-xs font-mono font-bold">
+                        <span>จังหวะที่ {insiderRevealStage === 'master_closing' ? '1/2' : '2/2'}</span>
+                        <span>·</span>
+                        <span>
+                          {insiderRevealStage === 'master_closing'
+                            ? 'มาสเตอร์กำลังหลับตา'
+                            : 'อินไซเดอร์กำลังแอบดูคำ'}
+                        </span>
                       </div>
-                      <p className="text-xs text-rose-100">
-                        กรุณาหลับตารอสักครู่ ระบบจะเข้าสู่ช่วงถาม-ตอบอัตโนมัติเมื่อครบเวลา
+
+                      <div className="text-base font-black">
+                        {insiderRevealStage === 'master_closing' ? (
+                          <span>🌙 มาสเตอร์หลับตาลงและวางมือถือ... ({insiderRevealCountdown ?? 3}s)</span>
+                        ) : (
+                          <span>🕵️ อินไซเดอร์กำลังแอบดูคำศัพท์ลับ ({insiderRevealCountdown ?? 8}s)</span>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-rose-100 max-w-sm mx-auto">
+                        {insiderRevealStage === 'master_closing'
+                          ? 'ให้เวลามาสเตอร์หลับตาลงให้สนิท จากนั้นระบบจะส่งสัญญาณเรียกอินไซเดอร์ทันที'
+                          : 'กรุณาหลับตารอสักครู่ ระบบจะสั่งทุกคนลืมตาและเริ่มจับเวลาถาม-ตอบอัตโนมัติ'}
                       </p>
+
                       <button
                         type="button"
                         onClick={onStartQuizImmediately}
-                        className="mt-2 px-4 py-2 bg-white text-rose-900 font-extrabold text-xs rounded-xl cursor-pointer"
+                        className="mt-1 px-4 py-2 bg-white hover:bg-rose-50 text-rose-900 font-extrabold text-xs rounded-xl cursor-pointer transition-colors shadow-xs"
                       >
                         ข้ามไปเริ่มจับเวลาถาม-ตอบทันที →
                       </button>
@@ -424,7 +459,7 @@ export const InsiderPhases: React.FC<InsiderPhasesProps> = ({
                     >
                       <Volume2 className="w-4 h-4" />
                       <span>
-                        ยืนยันคำลับนี้ & ให้ GM เรียก Insider ลืมตาดูคำ (6 วินาที) →
+                        ยืนยันคำลับนี้ & ให้ GM สั่งมาสเตอร์หลับตาและเรียก Insider (11 วินาที) →
                       </span>
                     </button>
                   )}
@@ -440,24 +475,36 @@ export const InsiderPhases: React.FC<InsiderPhasesProps> = ({
                 }`}
               >
                 {currentRoom.insiderEyesOpen ? (
-                  <div className="space-y-3">
-                    <span className="px-3 py-1 bg-rose-600 text-white rounded-full text-xs font-black">
-                      🕵️ คุณคือ INSIDER! จดจำคำศัพท์ลับนี้ให้แม่น:
-                    </span>
-                    <div className="py-4 px-8 bg-white text-slate-950 rounded-2xl shadow-lg border-2 border-amber-400">
-                      <div className="text-3xl font-black tracking-tight">
-                        &ldquo;{currentRoom.secretWord}&rdquo;
+                  insiderRevealStage === 'master_closing' ? (
+                    <div className="space-y-3 text-center">
+                      <span className="text-4xl block animate-pulse">🌙</span>
+                      <div className="text-base font-extrabold text-amber-300">
+                        จังหวะที่ 1: กำลังรอให้ Master หลับตา ({insiderRevealCountdown ?? 3}s)...
                       </div>
-                      <div className="text-xs font-bold text-rose-700 mt-1">
-                        หมวดหมู่: {currentRoom.wordCategoryLabel || 'ทั่วไป'}
-                      </div>
+                      <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                        หลับตารออีกสักครู่ คำศัพท์ลับจะเปิดขึ้นมาให้คุณแอบดูในเสี้ยววินาทีนี้
+                      </p>
                     </div>
-                    <p className="text-xs text-rose-200 max-w-md mx-auto">
-                      จำได้แล้วรีบหลับตาลง! ในรอบถาม-ตอบ ให้เนียนถามคำถามชี้นำเพื่อนไปหาคำนี้โดยอย่าให้ใครจับได้ ({insiderRevealCountdown ?? 6}s)
-                    </p>
-                  </div>
+                  ) : (
+                    <div className="space-y-3 text-center">
+                      <span className="px-3 py-1 bg-rose-600 text-white rounded-full text-xs font-black">
+                        🕵️ คุณคือ INSIDER! จดจำคำศัพท์ลับนี้ให้แม่น ({insiderRevealCountdown ?? 8}s):
+                      </span>
+                      <div className="py-4 px-8 bg-white text-slate-950 rounded-2xl shadow-lg border-2 border-amber-400">
+                        <div className="text-3xl sm:text-4xl font-black tracking-tight">
+                          &ldquo;{currentRoom.secretWord}&rdquo;
+                        </div>
+                        <div className="text-xs font-bold text-rose-700 mt-1">
+                          หมวดหมู่: {currentRoom.wordCategoryLabel || 'ทั่วไป'}
+                        </div>
+                      </div>
+                      <p className="text-xs text-rose-200 max-w-md mx-auto">
+                        จำได้แล้วรีบหลับตาลง! ในรอบถาม-ตอบ ให้เนียนถามคำถามชี้นำเพื่อนไปหาคำนี้โดยอย่าให้ใครจับได้
+                      </p>
+                    </div>
+                  )
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-3 text-center">
                     <span className="text-4xl block">🤫</span>
                     <div className="text-lg font-extrabold text-rose-300">
                       คุณคือ Insider! หลับตารอสัญญาณเรียกจาก Game Master...

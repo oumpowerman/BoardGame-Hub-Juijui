@@ -636,22 +636,19 @@ export const AvalonLobby: React.FC<AvalonLobbyProps> = ({
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
               type="button"
-              disabled={isLoading || players.length < 5}
+              disabled={isLoading}
               onClick={onStartGame}
               className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-black text-sm rounded-2xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
             >
               <Play className="w-4 h-4 fill-current" />
               <span>
-                {roleMode === 'manual'
+                {players.length < 5
+                  ? `เริ่มศึกอัศวินโต๊ะกลม (${players.length} คน · เสริมบอทให้ครบ ${Math.max(5, targetCount)} อัตโนมัติ) →`
+                  : roleMode === 'manual'
                   ? 'ยืนยันจำนวนผู้เล่นและเปิดหน้าจอเลือกบทบาทตามไพ่จริง →'
-                  : 'สุ่มแจกบทบาทและเริ่มศึกอัศวินโต๊ะกลม →'}
+                  : `สุ่มแจกบทบาทและเริ่มศึกอัศวินโต๊ะกลม (${players.length} คน) →`}
               </span>
             </motion.button>
-            {players.length < 5 && (
-              <p className="text-[11px] text-rose-600 text-center font-bold mt-2">
-                * ต้องมีผู้เล่นอย่างน้อย 5 คนจึงจะเริ่มได้ (กดปุ่ม &quot;+ เพิ่มบอทซ้อมมือ&quot; เพื่อเติมผู้เล่นได้)
-              </p>
-            )}
           </div>
         ) : (
           <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-center text-xs font-bold text-emerald-900">

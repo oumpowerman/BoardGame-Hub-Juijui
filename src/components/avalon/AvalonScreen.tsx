@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Crown, Users, Sparkles, KeyRound } from 'lucide-react';
 import {
   createTableRoom,
+  findRoomByCode,
   joinTableRoom,
   listenToRoom,
   listenToRoomPlayers,
@@ -35,6 +36,10 @@ import { AvalonInvitesBanner } from './AvalonInvitesBanner';
 import { AvalonLobby } from './AvalonLobby';
 import { AvalonPhases } from './AvalonPhases';
 import { AvalonCreationTransitionOverlay } from './AvalonCreationTransitionOverlay';
+import {
+  saveActiveRoomSession,
+  clearActiveRoomSession,
+} from '../../utils/activeRoomPersistence';
 
 interface AvalonScreenProps {
   onBackToCatalog: () => void;
@@ -90,8 +95,8 @@ export const AvalonScreen: React.FC<AvalonScreenProps> = ({
 
   // Handle auto-join from URL parameter if code provided
   useEffect(() => {
-    if (initialRoomCode && initialRoomCode.length === 4 && !activeRoomId) {
-      handleJoinRoom(initialRoomCode);
+    if (initialRoomCode && initialRoomCode.trim() && !activeRoomId) {
+      handleJoinRoom(initialRoomCode.trim());
     }
   }, [initialRoomCode]);
 
@@ -104,12 +109,18 @@ export const AvalonScreen: React.FC<AvalonScreenProps> = ({
     const unsub = listenToRoom(activeRoomId, (updatedRoom: FirestoreRoom | null) => {
       if (!updatedRoom) {
         // Room disbanded or deleted
+        clearActiveRoomSession();
         setActiveRoomId(null);
         setRoom(null);
         setPlayers([]);
         return;
       }
       setRoom(updatedRoom);
+      saveActiveRoomSession({
+        roomId: updatedRoom.id,
+        roomCode: updatedRoom.roomCode,
+        gameId: 'avalon',
+      });
     });
     return () => unsub();
   }, [activeRoomId]);
@@ -152,17 +163,25 @@ export const AvalonScreen: React.FC<AvalonScreenProps> = ({
     }
   };
 
-  // Join room handler
+  // Join room handler (supports 4-digit roomCode or roomId)
   const handleJoinRoom = async (codeToJoin?: string) => {
     const targetCode = (codeToJoin || joinCodeInput).trim();
-    if (targetCode.length !== 4) {
+    if (!targetCode) {
       setErrorMsg('กรุณากรอกรหัสห้อง 4 หลัก');
       return;
     }
     setErrorMsg('');
     setIsLoading(true);
     try {
-      const joined = await joinTableRoom(targetCode, currentUserName);
+      let targetRoomId = targetCode;
+      if (targetCode.length === 4 && /^\d{4}$/.test(targetCode)) {
+        const found = await findRoomByCode(targetCode);
+        if (!found) {
+          throw new Error(`ไม่พบห้องรหัส #${targetCode} กรุณาตรวจสอบรหัสอีกครั้ง`);
+        }
+        targetRoomId = found.id;
+      }
+      const joined = await joinTableRoom(targetRoomId, currentUserName);
       setActiveRoomId(joined.id);
       playChime();
     } catch (err: unknown) {
@@ -176,6 +195,7 @@ export const AvalonScreen: React.FC<AvalonScreenProps> = ({
   // Leave / Disband room handler
   const handleLeaveRoom = async () => {
     if (!activeRoomId) return;
+    clearActiveRoomSession();
     try {
       const isHost = room?.hostId === currentUserId;
       if (isHost) {
@@ -228,11 +248,20 @@ export const AvalonScreen: React.FC<AvalonScreenProps> = ({
     await setPlayerAvalonRole(activeRoomId, currentUserId, role);
   };
 
-  // Start Avalon game
+  // Start Avalon game (auto-fills bots if < 5 players so Start never blocks)
   const handleStartGame = async () => {
     if (!activeRoomId || !isHost) return;
     setIsLoading(true);
+    setErrorMsg('');
     try {
+      if (!players.some((p) => p.id === currentUserId)) {
+        await joinTableRoom(activeRoomId, currentUserName);
+      }
+      const targetMin = Math.max(5, room?.avalonTargetPlayers || 5);
+      const botsNeeded = Math.max(0, targetMin - players.length);
+      for (let i = 0; i < botsNeeded; i++) {
+        await addPracticeTablemate(activeRoomId);
+      }
       await startAvalonGame(activeRoomId);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'ไม่สามารถเริ่มเกมได้';

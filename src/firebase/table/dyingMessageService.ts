@@ -188,6 +188,32 @@ export async function acknowledgeDyingMessageRole(
   }
 }
 
+// DM-3.5 Host / iPad Force Acknowledge All Roles in Dying Message
+export async function forceAcknowledgeAllDyingMessageRoles(
+  roomId: string
+): Promise<void> {
+  await ensureAuthUser();
+  try {
+    const playersSnap = await getDocs(
+      collection(db, 'rooms', roomId, 'players')
+    );
+    for (const d of playersSnap.docs) {
+      const p = d.data() as FirestorePlayer;
+      if (!p.roleAcknowledged) {
+        await updateDoc(doc(db, 'rooms', roomId, 'players', d.id), {
+          roleAcknowledged: true,
+        });
+      }
+    }
+    await updateDoc(doc(db, 'rooms', roomId), {
+      status: 'dm_night_kill',
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}`);
+  }
+}
+
 // DM-4. Killer Selects Victim in Night 1 -> Deal Evidence Hands to Victim & Killer
 export async function selectDyingMessageVictim(
   roomId: string,

@@ -1,6 +1,0 @@
-{
-  "summary":  "Implementation plan to eliminate all mockup data from MasterServerHub and Navbar, connecting the Master Server directly to real-time Cloud Firestore rooms for Cheese Thief with clean step-by-step authoritative progression.",
-  "updatedAt":  "2026-11-07T18:15:52.129817390Z",
-  "requestFeedback":  true,
-  "userFacing":  true
-}

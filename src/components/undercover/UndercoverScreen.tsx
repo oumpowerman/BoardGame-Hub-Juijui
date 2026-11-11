@@ -32,6 +32,7 @@ import {
   setUndercoverWordPair,
   startUndercoverGameAndDealRoles,
   acknowledgeUndercoverRole,
+  forceAcknowledgeAllUndercoverRoles,
   submitUndercoverClue,
   submitUndercoverVote,
   submitMrWhiteGuess,
@@ -51,6 +52,10 @@ import {
 import { tableAudio } from '../../utils/tableAudio';
 import { thaiGameMaster } from '../../utils/thaiGameMasterTTS';
 import { useUndercoverGameMaster } from './useUndercoverGameMaster';
+import {
+  saveActiveRoomSession,
+  clearActiveRoomSession,
+} from '../../utils/activeRoomPersistence';
 
 export interface UndercoverScreenProps {
   currentUser: UserProfile;
@@ -160,9 +165,11 @@ export const UndercoverScreen: React.FC<UndercoverScreenProps> = ({
     }
   }, [initialRoomCode]);
 
-  // Clean up any stale rooms previously hosted by current user
+  // Clean up any stale lobby rooms previously hosted by current user
   useEffect(() => {
-    const myHosted = rooms.filter((r) => r.hostId === currentUser.uid);
+    const myHosted = rooms.filter(
+      (r) => r.hostId === currentUser.uid && r.status === 'lobby'
+    );
     if (myHosted.length > 1) {
       const keepId = selectedRoomId || myHosted[0].id;
       cleanupHostPreviousRooms(currentUser.uid, keepId);
@@ -182,6 +189,11 @@ export const UndercoverScreen: React.FC<UndercoverScreenProps> = ({
       setCurrentRoom(updatedRoom);
       onActiveRoomChange?.(updatedRoom);
       if (updatedRoom) {
+        saveActiveRoomSession({
+          roomId: updatedRoom.id,
+          roomCode: updatedRoom.roomCode,
+          gameId: 'undercover',
+        });
         if (typeof updatedRoom.enableMrWhite === 'boolean') {
           setEnableMrWhite(updatedRoom.enableMrWhite);
         }
@@ -193,6 +205,8 @@ export const UndercoverScreen: React.FC<UndercoverScreenProps> = ({
         if (updatedRoom.clueDurationSeconds) {
           setClueTimerSeconds(updatedRoom.clueDurationSeconds);
         }
+      } else {
+        clearActiveRoomSession();
       }
     });
 
@@ -394,6 +408,7 @@ export const UndercoverScreen: React.FC<UndercoverScreenProps> = ({
     const hostLeaving = targetRoom.hostId === currentUser.uid;
 
     await runLeaveRoomTransition(targetRoom.roomCode, async () => {
+      clearActiveRoomSession();
       setSelectedRoomId(null);
       setCurrentRoom(null);
       setPlayers([]);
@@ -493,6 +508,9 @@ export const UndercoverScreen: React.FC<UndercoverScreenProps> = ({
     setErrorMessage(null);
 
     await runStartGameTransition(currentRoom.roomCode, async () => {
+      if (!players.some((p) => p.id === currentUser.uid)) {
+        await joinTableRoom(currentRoom.id, currentUser.accountName);
+      }
       await startUndercoverGameAndDealRoles(currentRoom.id);
       if (soundEnabled) tableAudio.playMorningGong();
     });
@@ -756,6 +774,9 @@ export const UndercoverScreen: React.FC<UndercoverScreenProps> = ({
                       currentUid={currentUser.uid}
                       isLoading={isLoading}
                       onAcknowledgeRole={handleAcknowledgeRole}
+                      onForceAcknowledgeRoles={() =>
+                        forceAcknowledgeAllUndercoverRoles(currentRoom.id)
+                      }
                       onSubmitClue={handleSubmitClue}
                       onSubmitVote={handleSubmitVote}
                       onSubmitMrWhiteGuess={handleSubmitMrWhiteGuess}

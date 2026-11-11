@@ -58,6 +58,10 @@ import {
   sendRoomInviteToFriend,
   addInstantMutualFriendByCodeOrUid,
 } from './firebase/userService';
+import {
+  getActiveRoomSession,
+  clearActiveRoomSession,
+} from './utils/activeRoomPersistence';
 
 export default function App() {
   // 1. Auth & Account Setup Gate State
@@ -604,6 +608,55 @@ export default function App() {
       }
     }
   }, [currentUser]);
+
+  // Auto-Reconnect to saved active room session upon opening or refreshing the app
+  const hasCheckedAutoReconnectRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (!currentUser || hasCheckedAutoReconnectRef.current) return;
+    if (firestoreRooms.length === 0) return;
+
+    const urlParams =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search)
+        : null;
+    if (urlParams?.get('room') || urlParams?.get('code')) {
+      hasCheckedAutoReconnectRef.current = true;
+      return;
+    }
+
+    hasCheckedAutoReconnectRef.current = true;
+    const saved = getActiveRoomSession();
+    if (!saved) return;
+
+    const matchedRoom = firestoreRooms.find(
+      (r) => r.id === saved.roomId || r.roomCode === saved.roomCode
+    );
+    if (!matchedRoom) {
+      clearActiveRoomSession(saved.roomId);
+      return;
+    }
+
+    const targetCode = matchedRoom.roomCode;
+    showLiveNotification(
+      `🔄 เชื่อมต่อกลับเข้าโต๊ะเดิม #${targetCode} (${matchedRoom.roomName}) อัตโนมัติ`
+    );
+
+    if (matchedRoom.gameId === 'avalon') {
+      handleEnterAvalonScreen(targetCode);
+    } else if (matchedRoom.gameId === 'detective-club') {
+      handleEnterDetectiveClubScreen(targetCode);
+    } else if (matchedRoom.gameId === 'undercover') {
+      handleEnterUndercoverScreen(targetCode);
+    } else if (matchedRoom.gameId === 'insider') {
+      handleEnterInsiderScreen(targetCode);
+    } else if (matchedRoom.gameId === 'hues-cues') {
+      handleEnterHuesCuesScreen(matchedRoom.id);
+    } else if (matchedRoom.gameId === 'dying-message') {
+      handleEnterDyingMessageScreen(targetCode);
+    } else {
+      handleEnterCheeseThiefScreen(targetCode);
+    }
+  }, [currentUser, firestoreRooms]);
 
   // Exit Game Screen back to another tab with Matching Game Variant Transition
   const handleExitGameToSection = (

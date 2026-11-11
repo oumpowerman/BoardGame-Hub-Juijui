@@ -63,7 +63,7 @@ export const InsiderLobby: React.FC<InsiderLobbyProps> = ({
   onStartGame,
 }) => {
   const myPlayer = players.find((p) => p.id === currentUser.uid);
-  const canStartGame = players.length >= 4 && players.length <= 8;
+  const canStartGame = players.length >= 1 && players.length <= 8;
 
   return (
     <div className="space-y-5">
@@ -418,12 +418,9 @@ export const InsiderLobby: React.FC<InsiderLobbyProps> = ({
           >
             <Play className="w-4 h-4 fill-current" />
             <span>
-              {canStartGame
+              {players.length >= 4
                 ? `เริ่มเกม Insider (${players.length} คน) → แจกการ์ดบทบาท`
-                : `ต้องมีผู้เล่นอย่างน้อย 4 คน (ขาดอีก ${Math.max(
-                    0,
-                    4 - players.length
-                  )} คน)`}
+                : `เริ่มเกม Insider (${players.length} คน · เสริมบอทให้ครบ 4 อัตโนมัติ) →`}
             </span>
           </button>
         </div>

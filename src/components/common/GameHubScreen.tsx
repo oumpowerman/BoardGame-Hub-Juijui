@@ -7,10 +7,12 @@ import {
   Users,
   UserPlus,
   AlertCircle,
+  RotateCcw,
 } from 'lucide-react';
 import { FirestoreRoom, GamePhase } from '../../firebase/tableService';
 import { UserProfile } from '../../firebase/userService';
 import { TransitionGameVariant } from '../transitions/GameSceneTransition';
+import { getActiveRoomSession } from '../../utils/activeRoomPersistence';
 
 export interface GameHubScreenProps {
   variant: TransitionGameVariant;
@@ -228,6 +230,14 @@ export const GameHubScreen: React.FC<GameHubScreenProps> = ({
   onOpenFriendModal,
 }) => {
   const theme = HUB_THEMES[variant];
+  const savedSession = getActiveRoomSession();
+  const reconnectingRoom = rooms.find(
+    (r) =>
+      (savedSession &&
+        (r.id === savedSession.roomId || r.roomCode === savedSession.roomCode)) ||
+      r.hostId === currentUid ||
+      r.ctIpadUid === currentUid
+  );
 
   return (
     <motion.div
@@ -238,6 +248,41 @@ export const GameHubScreen: React.FC<GameHubScreenProps> = ({
       transition={{ duration: 0.25, ease: 'easeOut' }}
       className="max-w-2xl mx-auto w-full space-y-6"
     >
+      {/* 0. Instant Reconnect Banner if player has an active or hosted room */}
+      {reconnectingRoom && (
+        <div className="bg-emerald-950 text-white border-2 border-emerald-400/80 rounded-3xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0">
+              <RotateCcw className="w-5 h-5 text-emerald-300" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2 py-0.5 rounded-md bg-emerald-400 text-emerald-950 text-[11px] font-black font-mono">
+                  #{reconnectingRoom.roomCode}
+                </span>
+                <span className="text-xs font-extrabold text-emerald-300">
+                  พบโต๊ะเดิมที่คุณเพิ่งเล่นอยู่!
+                </span>
+              </div>
+              <p className="text-sm font-black text-white truncate mt-0.5">
+                {reconnectingRoom.roomName || `โต๊ะของ ${reconnectingRoom.hostName}`}
+              </p>
+              <p className="text-[11px] text-emerald-200/80">
+                กดปุ่มด้านขวาเพื่อกลับเข้าสู่ฉากที่กำลังเล่นอยู่ได้ทันทีโดยไม่ต้องเริ่มใหม่
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onSelectAndJoinRoom(reconnectingRoom)}
+            className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-emerald-950 font-black text-xs sm:text-sm shadow-sm transition-all cursor-pointer shrink-0 flex items-center justify-center gap-1.5"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>กลับเข้าโต๊ะเดิมทันที</span>
+          </button>
+        </div>
+      )}
+
       {/* 1. Unified Hero & Action Card */}
       <div
         className={`${theme.heroCard} border rounded-3xl p-6 sm:p-8 shadow-sm text-center space-y-5`}
@@ -345,7 +390,7 @@ export const GameHubScreen: React.FC<GameHubScreenProps> = ({
               {activeRoomsTitle} ({rooms.length} ห้อง)
             </h2>
           </div>
-          <span className="text-xs text-slate-500">แตะเพื่อเข้าร่วมทันที</span>
+          <span className="text-xs text-slate-500">แตะเพื่อเข้าร่วมหรือกลับเข้าเกม</span>
         </div>
 
         {rooms.length === 0 ? (
@@ -367,6 +412,12 @@ export const GameHubScreen: React.FC<GameHubScreenProps> = ({
                   label: 'STEP 1 · ห้องรอผู้เล่น',
                   color: 'text-emerald-800 bg-emerald-100 border-emerald-200',
                 };
+              const isMyPreviousOrHostedRoom =
+                room.hostId === currentUid ||
+                (savedSession &&
+                  (room.id === savedSession.roomId ||
+                    room.roomCode === savedSession.roomCode));
+              const isPlaying = room.status !== 'lobby';
               return (
                 <div
                   key={room.id}
@@ -385,6 +436,11 @@ export const GameHubScreen: React.FC<GameHubScreenProps> = ({
                       >
                         {phaseInfo.label}
                       </span>
+                      {isMyPreviousOrHostedRoom && (
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-600 text-white">
+                          โต๊ะของคุณ
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs sm:text-sm font-extrabold text-slate-900 truncate mt-1">
                       {room.roomName || `โต๊ะของ ${room.hostName}`}
@@ -405,9 +461,17 @@ export const GameHubScreen: React.FC<GameHubScreenProps> = ({
                         e.stopPropagation();
                         onSelectAndJoinRoom(room);
                       }}
-                      className={`px-3 py-1.5 ${theme.enterTableBtn} font-bold text-xs rounded-xl transition-colors cursor-pointer`}
+                      className={`px-3 py-1.5 ${
+                        isMyPreviousOrHostedRoom || isPlaying
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                          : theme.enterTableBtn
+                      } font-bold text-xs rounded-xl transition-colors cursor-pointer`}
                     >
-                      เข้าโต๊ะ
+                      {isMyPreviousOrHostedRoom
+                        ? 'กลับเข้าโต๊ะเดิม'
+                        : isPlaying
+                        ? 'กลับเข้าเกม'
+                        : 'เข้าโต๊ะ'}
                     </button>
                     {room.hostId === currentUid && (
                       <button

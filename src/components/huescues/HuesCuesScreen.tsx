@@ -25,6 +25,7 @@ import {
   listenToRoom,
   listenToRoomPlayers,
   leaveOrCloseTableRoom,
+  detachPlayerSeatForIpadMode,
   addPracticeTablemate,
   removePlayer,
   addFriendToRoomSeat,
@@ -44,6 +45,11 @@ import { GameSceneTransition } from '../transitions/GameSceneTransition';
 import { useRoomTransition } from '../../hooks/useRoomTransition';
 import { HuesCuesCentralBoard } from './HuesCuesCentralBoard';
 import { HuesCuesPlayerControls } from './HuesCuesPlayerControls';
+import {
+  saveActiveRoomSession,
+  clearActiveRoomSession,
+  getActiveRoomSession,
+} from '../../utils/activeRoomPersistence';
 
 interface HuesCuesScreenProps {
   currentUser: UserProfile;
@@ -134,8 +140,9 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
       }
 
       if (asBoard) {
-        // Connect as Central iPad Board without taking a player seat
+        // Connect as Central iPad Board and detach any player seat for this device
         await registerHuesCuesIpadBoard(targetRoomId, true);
+        await detachPlayerSeatForIpadMode(targetRoomId);
         setActiveRoomId(targetRoomId);
       } else {
         // Connect as a Player on Phone
@@ -163,15 +170,22 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
     }
     const unsub = listenToRoom(activeRoomId, (updatedRoom) => {
       if (!updatedRoom) {
+        clearActiveRoomSession();
         setActiveRoomId('');
         setRoom(null);
         setPlayers([]);
         return;
       }
       setRoom(updatedRoom);
+      saveActiveRoomSession({
+        roomId: updatedRoom.id,
+        roomCode: updatedRoom.roomCode,
+        gameId: 'hues-cues',
+        isIpadBoard: isIpadBoardView,
+      });
     });
     return () => unsub();
-  }, [activeRoomId]);
+  }, [activeRoomId, isIpadBoardView]);
 
   // Real-time listener for Room Players
   useEffect(() => {
@@ -228,6 +242,7 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
 
       if (isIpadBoardView) {
         await registerHuesCuesIpadBoard(targetRoomId, true);
+        await detachPlayerSeatForIpadMode(targetRoomId);
       } else {
         await joinTableRoom(
           targetRoomId,
@@ -243,10 +258,12 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
   // Leave or Close Room with Transition Curtain
   const handleLeaveRoom = async () => {
     if (!activeRoomId || !room) {
+      clearActiveRoomSession();
       setActiveRoomId('');
       return;
     }
     await runLeaveRoomTransition(room.roomCode, async () => {
+      clearActiveRoomSession();
       if (isIpadBoardView && room.hostId !== currentUser.uid) {
         setActiveRoomId('');
         return;
@@ -259,11 +276,21 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
     });
   };
 
-  // Start Game (Host) with Transition Curtain
+  // Start Game (Host or iPad Board) with Transition Curtain
   const handleStartGame = async () => {
     if (!activeRoomId || !room) return;
     setIsLoading(true);
     await runStartGameTransition(room.roomCode, async () => {
+      if (isIpadBoardView) {
+        await registerHuesCuesIpadBoard(activeRoomId, true);
+        await detachPlayerSeatForIpadMode(activeRoomId);
+      } else if (!players.some((p) => p.id === currentUser.uid)) {
+        await joinTableRoom(
+          activeRoomId,
+          currentUser.accountName,
+          currentUser.avatarUrl
+        );
+      }
       await startHuesCuesRound(activeRoomId);
       confetti({ particleCount: 70, spread: 65, origin: { y: 0.6 } });
     });
@@ -316,6 +343,16 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
   // VIEW 1: ENTRY LOBBY (CREATE ROOM ON HOST PHONE OR JOIN WITH 4-DIGIT CODE)
   // ============================================================================
   if (!activeRoomId || !room) {
+    const savedSession = getActiveRoomSession();
+    const resumableRoom =
+      liveHuesRooms.find(
+        (r) =>
+          (savedSession &&
+            (r.id === savedSession.roomId ||
+              r.roomCode === savedSession.roomCode)) ||
+          r.hostId === currentUser.uid
+      ) || null;
+
     return (
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         {/* Real-time Room Action Transition Portal */}
@@ -348,6 +385,29 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
               แล้วซิงค์ตำแหน่งหมากทายสีระหว่างมือถือและ iPad แบบเรียลไทม์!
             </p>
           </div>
+
+          {resumableRoom && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-amber-50 border-2 border-emerald-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div>
+                <div className="text-xs font-extrabold text-emerald-950">
+                  ⚡ พบโต๊ะเดิมที่คุณกำลังเล่นอยู่! (#{resumableRoom.roomCode})
+                </div>
+                <div className="text-[11px] text-slate-600">
+                  {resumableRoom.roomName || `โต๊ะของ ${resumableRoom.hostName}`} · กดเพื่อกลับเข้าฉากที่กำลังเล่นต่อได้ทันที
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const asBoard = Boolean(savedSession?.isIpadBoard);
+                  await handleAutoConnectByCodeOrId(resumableRoom.id, asBoard);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs cursor-pointer shrink-0 shadow-xs"
+              >
+                กลับเข้าโต๊ะเดิมทันที →
+              </button>
+            </div>
+          )}
 
           {errorMsg && (
             <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs font-bold text-rose-700 text-center">
@@ -457,6 +517,7 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
                         onClick={async () => {
                           await runJoinRoomTransition(r.roomCode, async () => {
                             await registerHuesCuesIpadBoard(r.id, true);
+                            await detachPlayerSeatForIpadMode(r.id);
                             setIsIpadBoardView(true);
                             setActiveRoomId(r.id);
                             return { roomCode: r.roomCode, id: r.id };
@@ -480,10 +541,10 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
 
   const isHost = room.hostId === currentUser.uid;
   const ipadReady = Boolean(room.hcIpadConnected);
-  const canStartGame = ipadReady && players.length >= 1;
+  const canStartGame = true;
 
   // ============================================================================
-  // VIEW 2: WAITING ROOM LOBBY (REQUIRES IPAD QR SCAN BEFORE STARTING GAME)
+  // VIEW 2: WAITING ROOM LOBBY
   // ============================================================================
   if (room.status === 'lobby') {
     const ipadQrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(
@@ -511,11 +572,18 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 const nextMode = !isIpadBoardView;
                 setIsIpadBoardView(nextMode);
                 if (nextMode) {
-                  registerHuesCuesIpadBoard(room.id, true);
+                  await registerHuesCuesIpadBoard(room.id, true);
+                  await detachPlayerSeatForIpadMode(room.id);
+                } else {
+                  await joinTableRoom(
+                    room.id,
+                    currentUser.accountName,
+                    currentUser.avatarUrl
+                  );
                 }
               }}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
@@ -527,7 +595,7 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
               <Tablet className="w-3.5 h-3.5" />
               <span>
                 {isIpadBoardView
-                  ? 'เครื่องนี้คือกระดานกลาง iPad'
+                  ? 'เครื่องนี้คือกระดานกลาง iPad (ถอดเก้าอี้ผู้เล่นแล้ว)'
                   : 'สลับเครื่องนี้เป็นกระดาน iPad'}
               </span>
             </button>
@@ -544,8 +612,8 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
           </div>
           <p className="text-xs sm:text-sm font-semibold text-slate-800 max-w-xl mx-auto">
             {isIpadBoardView
-              ? 'หน้าจอนี้ถูกตั้งค่าเป็น "กระดานสีกลาง iPad" เรียบร้อยแล้ว! รอโฮสต์กดเริ่มเกมบนโทรศัพท์'
-              : 'ให้เพื่อนเข้าห้องด้วยรหัส 4 หลัก และนำ iPad มาสแกน QR Code ด้านล่างเพื่อใช้เป็นกระดานกลางก่อนเริ่มเกม'}
+              ? 'หน้าจอนี้ถูกตั้งค่าเป็น "กระดานสีกลาง iPad" เรียบร้อยแล้ว! รอโฮสต์กดเริ่มเกม หรือกดเริ่มเกมจากด้านล่างได้เลย'
+              : 'ให้เพื่อนเข้าห้องด้วยรหัส 4 หลัก และสามารถนำ iPad มาสแกน QR Code ด้านล่างเพื่อใช้เป็นกระดานกลาง หรือกดเริ่มเกมได้ทันที'}
           </p>
         </div>
 
@@ -576,7 +644,7 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
 
               <p className="text-xs text-slate-600 leading-relaxed">
                 นำ <strong>iPad หรือแท็บเล็ต</strong> ที่วางกลางโต๊ะมาสแกน QR Code นี้
-                ระบบจะเปิดหน้ากระดานสี 480 ช่องแบบเต็มจอและปลดล็อกปุ่มเริ่มเกมให้โฮสต์ทันที
+                ระบบจะเปิดหน้ากระดานสี 480 ช่องแบบเต็มจอและถอดเก้าอี้ผู้เล่นของ iPad ออกอัตโนมัติ
               </p>
 
               {/* QR Image Box */}
@@ -617,8 +685,8 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
                   <span>กระดานกลาง iPad พร้อมใช้งานแล้ว!</span>
                 </div>
               ) : (
-                <span className="text-xs text-rose-600 font-bold">
-                  * ต้องเชื่อมต่อ iPad ก่อนจึงจะกดเริ่มเกมได้
+                <span className="text-xs text-slate-600 font-bold">
+                  สามารถเชื่อม iPad หรือกดเริ่มเล่นผ่านมือถือได้ทันที
                 </span>
               )}
 
@@ -630,7 +698,7 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
                 >
                   {ipadReady
                     ? 'ยกเลิกสถานะเชื่อมต่อ iPad'
-                    : 'จำลองเชื่อมต่อ iPad (ทดสอบเครื่องเดียว)'}
+                    : 'เปิดสถานะเชื่อมต่อ iPad'}
                 </button>
               )}
             </div>
@@ -767,31 +835,25 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
               </div>
             </div>
 
-            {/* Host Start Game Button (Locked until iPad is Connected!) */}
+            {/* Host or iPad Board Start Game Button */}
             <div className="pt-3 border-t border-amber-100">
-              {isHost ? (
+              {isHost || isIpadBoardView ? (
                 <button
                   type="button"
                   disabled={!canStartGame || isLoading}
                   onClick={handleStartGame}
-                  className={`w-full py-3.5 rounded-2xl font-extrabold text-xs sm:text-sm shadow-sm transition-all inline-flex items-center justify-center gap-2 ${
-                    canStartGame
-                      ? 'bg-amber-400 hover:bg-amber-300 text-amber-950 cursor-pointer'
-                      : 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                  }`}
+                  className="w-full py-3.5 rounded-2xl font-extrabold text-xs sm:text-sm shadow-sm transition-all inline-flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300 text-amber-950 cursor-pointer"
                 >
                   <Play className="w-4 h-4 fill-current" />
                   <span>
-                    {!ipadReady
-                      ? 'รอสแกน QR เชื่อมต่อกระดาน iPad ก่อนเริ่มเกม...'
-                      : 'กระดาน iPad พร้อมแล้ว — เริ่มเกม Hues & Cues เลย!'}
+                    {players.length < 3
+                      ? `เริ่มเกม Hues & Cues (${players.length} คน · เสริมบอทให้ครบ 3 อัตโนมัติ) →`
+                      : `เริ่มเกม Hues & Cues เลย! (${players.length} คน)`}
                   </span>
                 </button>
               ) : (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-center text-xs font-bold text-amber-900">
-                  {!ipadReady
-                    ? 'กำลังรอสแกนเชื่อมต่อกระดานกลาง iPad...'
-                    : 'กระดาน iPad พร้อมแล้ว! รอโฮสต์กดเริ่มเกม...'}
+                  รอโฮสต์ ({room.hostName}) กดเริ่มเกม...
                 </div>
               )}
             </div>
@@ -811,7 +873,13 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
     room.status === 'hc_guess_1' || room.status === 'hc_guess_2';
 
   return (
-    <div className="max-w-[1440px] mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4">
+    <div
+      className={
+        isIpadBoardView
+          ? 'w-full max-w-[1600px] mx-auto px-2 sm:px-4 py-3 sm:py-5 space-y-3'
+          : 'max-w-[1440px] mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4'
+      }
+    >
       {/* Real-time Room Action Transition Portal */}
       <GameSceneTransition {...transitionProps} />
       {/* Top Status & Mode Bar */}
@@ -873,12 +941,12 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
       <div
         className={
           isIpadBoardView
-            ? 'grid grid-cols-1 xl:grid-cols-12 gap-5 items-start'
+            ? 'grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start w-full'
             : 'grid grid-cols-1 md:grid-cols-2 gap-5 items-start max-w-4xl mx-auto'
         }
       >
         {/* Central iPad 480-Color Board OR Mobile Companion Remote */}
-        <div className={isIpadBoardView ? 'xl:col-span-9' : 'w-full'}>
+        <div className={isIpadBoardView ? 'lg:col-span-8 xl:col-span-9 w-full' : 'w-full'}>
           <HuesCuesCentralBoard
             onSelectTile={handleSelectTile}
             guesses={guessesMap}

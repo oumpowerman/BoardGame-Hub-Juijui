@@ -211,33 +211,120 @@ export async function joinTableRoom(
       : undefined);
 
   try {
-    const playerDoc = await getDoc(
-      doc(db, 'rooms', roomId, 'players', user.uid)
+    const [roomSnap, playersSnap, playerDoc] = await Promise.all([
+      getDoc(doc(db, 'rooms', roomId)),
+      getDocs(collection(db, 'rooms', roomId, 'players')),
+      getDoc(doc(db, 'rooms', roomId, 'players', user.uid)),
+    ]);
+
+    const roomData = roomSnap.data() as FirestoreRoom | undefined;
+    const existingPlayers = playersSnap.docs.map(
+      (d) => d.data() as FirestorePlayer
     );
+    const hasSeatedHumanHost = existingPlayers.some(
+      (p) =>
+        p.id === roomData?.hostId &&
+        !p.id.startsWith('bot_') &&
+        !p.isFriendSeat
+    );
+
+    const shouldBecomeHost =
+      roomData?.hostId === user.uid || !hasSeatedHumanHost;
+
     if (playerDoc.exists()) {
       const existing = playerDoc.data() as FirestorePlayer;
       const updatedName = playerName.trim() || existing.name;
-      const updates: Partial<FirestorePlayer> = { name: updatedName };
+      const updates: Partial<FirestorePlayer> = {
+        name: updatedName,
+        isReady: true,
+        isFriendSeat: false,
+        ...(shouldBecomeHost ? { isHost: true } : {}),
+      };
       if (effectiveAvatar) updates.avatarUrl = effectiveAvatar;
       await updateDoc(doc(db, 'rooms', roomId, 'players', user.uid), updates);
+      if (shouldBecomeHost && roomData && roomData.hostId !== user.uid) {
+        await updateDoc(doc(db, 'rooms', roomId), {
+          hostId: user.uid,
+          hostName: updatedName,
+          updatedAt: new Date().toISOString(),
+        });
+      }
       await syncRoomPlayerCount(roomId);
-      return { ...existing, name: updatedName, ...(effectiveAvatar ? { avatarUrl: effectiveAvatar } : {}) };
+      return {
+        ...existing,
+        ...updates,
+        ...(effectiveAvatar ? { avatarUrl: effectiveAvatar } : {}),
+      };
     }
 
+    const cleanName = playerName.trim() || `ผู้เล่น ${user.uid.slice(0, 4)}`;
     const playerData: FirestorePlayer = {
       id: user.uid,
-      name: playerName.trim() || `ผู้เล่น ${user.uid.slice(0, 4)}`,
+      name: cleanName,
       ...(effectiveAvatar ? { avatarUrl: effectiveAvatar } : {}),
-      isHost: false,
+      isHost: shouldBecomeHost,
       isReady: true,
+      isFriendSeat: false,
       joinedAt: new Date().toISOString(),
     };
 
     await setDoc(doc(db, 'rooms', roomId, 'players', user.uid), playerData);
+    if (shouldBecomeHost && roomData && roomData.hostId !== user.uid) {
+      await updateDoc(doc(db, 'rooms', roomId), {
+        hostId: user.uid,
+        hostName: cleanName,
+        updatedAt: new Date().toISOString(),
+      });
+    }
     await syncRoomPlayerCount(roomId);
     return playerData;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, playerPath);
+  }
+}
+
+// 3.5 Detach current device's player seat when switching to dedicated iPad Central Board mode
+export async function detachPlayerSeatForIpadMode(
+  roomId: string
+): Promise<void> {
+  const user = await ensureAuthUser();
+  try {
+    const playerRef = doc(db, 'rooms', roomId, 'players', user.uid);
+    const playerSnap = await getDoc(playerRef);
+    if (playerSnap.exists()) {
+      await deleteDoc(playerRef);
+    }
+
+    // If this device was the host and there is another human player seated, transfer host to them
+    const [roomSnap, playersSnap] = await Promise.all([
+      getDoc(doc(db, 'rooms', roomId)),
+      getDocs(collection(db, 'rooms', roomId, 'players')),
+    ]);
+
+    if (roomSnap.exists()) {
+      const roomData = roomSnap.data() as FirestoreRoom;
+      const remainingPlayers = playersSnap.docs.map(
+        (d) => d.data() as FirestorePlayer
+      );
+      if (roomData.hostId === user.uid) {
+        const nextHuman = remainingPlayers.find(
+          (p) => !p.id.startsWith('bot_') && !p.isFriendSeat && p.id !== user.uid
+        );
+        if (nextHuman) {
+          await updateDoc(doc(db, 'rooms', roomId, 'players', nextHuman.id), {
+            isHost: true,
+          });
+          await updateDoc(doc(db, 'rooms', roomId), {
+            hostId: nextHuman.id,
+            hostName: nextHuman.name,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+      await syncRoomPlayerCount(roomId);
+    }
+  } catch (error) {
+    console.warn('Could not detach iPad seat:', error);
   }
 }
 

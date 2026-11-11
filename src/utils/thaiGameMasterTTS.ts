@@ -59,7 +59,12 @@ class ThaiGameMasterTTS {
     this.volume = Math.max(0, Math.min(1, val));
   }
 
+  private speechQueue: { text: string; dedupeKey?: string; rate: number; pitch: number }[] = [];
+  private isProcessingQueue: boolean = false;
+
   public cancel() {
+    this.speechQueue = [];
+    this.isProcessingQueue = false;
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
@@ -67,9 +72,15 @@ class ThaiGameMasterTTS {
 
   /**
    * Speak a Thai phrase with SpeechSynthesisUtterance.
-   * Dedupes by key so identical calls within short succession don't repeat.
+   * Dedupes by key and enqueues utterances so sentences don't get cut off abruptly.
    */
-  public speak(text: string, dedupeKey?: string, rate: number = 0.95, pitch: number = 1.0) {
+  public speak(
+    text: string,
+    dedupeKey?: string,
+    rate: number = 0.95,
+    pitch: number = 1.0,
+    interrupt: boolean = false
+  ) {
     if (!this.enabled) return;
     if (dedupeKey && this.lastSpokenKey === dedupeKey) return;
     if (dedupeKey) {
@@ -80,23 +91,54 @@ class ThaiGameMasterTTS {
       return;
     }
 
-    try {
-      // Cancel pending utterances to keep pace
-      window.speechSynthesis.cancel();
+    if (interrupt) {
+      this.cancel();
+    }
 
-      const utterance = new SpeechSynthesisUtterance(text);
+    this.speechQueue.push({ text, dedupeKey, rate, pitch });
+    if (!this.isProcessingQueue) {
+      this.processNextInQueue();
+    }
+  }
+
+  private processNextInQueue() {
+    if (this.speechQueue.length === 0) {
+      this.isProcessingQueue = false;
+      return;
+    }
+
+    this.isProcessingQueue = true;
+    const item = this.speechQueue.shift();
+    if (!item) {
+      this.isProcessingQueue = false;
+      return;
+    }
+
+    try {
+      const utterance = new SpeechSynthesisUtterance(item.text);
       utterance.lang = 'th-TH';
-      utterance.rate = rate; // 0.95 for clear, authoritative tabletop GM pacing
-      utterance.pitch = pitch;
+      utterance.rate = item.rate;
+      utterance.pitch = item.pitch;
       utterance.volume = this.volume;
 
       if (this.selectedVoice) {
         utterance.voice = this.selectedVoice;
       }
 
+      utterance.onend = () => {
+        // Small pause between sentences for natural tabletop pacing
+        window.setTimeout(() => {
+          this.processNextInQueue();
+        }, 120);
+      };
+
+      utterance.onerror = () => {
+        this.processNextInQueue();
+      };
+
       window.speechSynthesis.speak(utterance);
     } catch {
-      // Graceful fallback to silence/chimes
+      this.processNextInQueue();
     }
   }
 
@@ -104,7 +146,7 @@ class ThaiGameMasterTTS {
 
   /** Called when entering Night Phases (1:00 AM) */
   public speakNightBegins() {
-    tableAudio.playHourChime(1);
+    tableAudio.playSleepChime();
     this.speak(
       'ทุกคนหลับตา และเอามือวางบนโต๊ะ... คืนนี้ชีสจะถูกขโมยหรือไม่',
       'night_begins',
@@ -187,19 +229,31 @@ class ThaiGameMasterTTS {
     );
   }
 
-  /** Step 3B: Insider wakes up to see the Secret Word */
+  /** Step 3B Stage 1: Master closes eyes (3s buffer) */
+  public speakInsiderMasterCloseEyes() {
+    tableAudio.playSleepChime();
+    this.speak(
+      'มาสเตอร์ หลับตา',
+      'insider_master_close_eyes',
+      0.95,
+      1.0
+    );
+  }
+
+  /** Step 3B Stage 2: Insider wakes up to see the Secret Word (8s buffer) */
   public speakInsiderWakeToPeekWord() {
     tableAudio.playHourChime(4);
     this.speak(
-      'มาสเตอร์หลับตา... จอมบงการ อินไซเดอร์ ลืมตาขึ้นมาดูคำศัพท์ลับบนหน้าจอ',
+      'จอมบงการ อินไซเดอร์ ลืมตาขึ้นมาดูคำศัพท์ลับบนหน้าจอ',
       'insider_wake_peek',
-      0.94,
+      0.95,
       1.0
     );
   }
 
   /** Step 3C: Insider closes eyes before Quiz starts */
   public speakInsiderCloseEyes() {
+    tableAudio.playSleepChime();
     this.speak(
       'อินไซเดอร์ หลับตา',
       'insider_close_eyes',

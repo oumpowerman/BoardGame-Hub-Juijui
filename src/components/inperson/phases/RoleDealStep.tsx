@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Eye, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Eye, CheckCircle2, ChevronRight, FastForward } from 'lucide-react';
 import { FirestoreRoom, FirestorePlayer } from '../../../firebase/tableService';
 import { getCheeseThiefRoleDetails } from './phaseUtils';
 
@@ -8,25 +8,30 @@ interface RoleDealStepProps {
   currentRoom: FirestoreRoom;
   players: FirestorePlayer[];
   myPlayer?: FirestorePlayer;
+  isHost?: boolean;
   isPeekingRole: boolean;
   onTogglePeekRole?: () => void;
   onPeekRoleStart: () => void;
   onPeekRoleEnd: () => void;
   onAcknowledgeRole: () => void;
+  onForceAdvancePhase?: () => void;
 }
 
 export const RoleDealStep: React.FC<RoleDealStepProps> = ({
   currentRoom,
   players,
   myPlayer,
+  isHost = false,
   isPeekingRole,
   onTogglePeekRole,
   onPeekRoleStart,
   onPeekRoleEnd,
   onAcknowledgeRole,
+  onForceAdvancePhase,
 }) => {
   const totalPlayers = players.length;
   const roleInfo = getCheeseThiefRoleDetails(myPlayer?.role, false);
+  const unacknowledgedPlayers = players.filter((p) => !p.roleAcknowledged);
 
   return (
     <motion.div
@@ -98,7 +103,7 @@ export const RoleDealStep: React.FC<RoleDealStepProps> = ({
       </div>
 
       {/* Unified Confirm Role & Advance to Dice Roll Button */}
-      <div>
+      <div className="space-y-2.5">
         <button
           type="button"
           disabled={myPlayer?.roleAcknowledged}
@@ -117,10 +122,28 @@ export const RoleDealStep: React.FC<RoleDealStepProps> = ({
           </span>
           {!myPlayer?.roleAcknowledged && <ChevronRight className="w-4 h-4" />}
         </button>
-        <div className="text-xs text-slate-500 font-mono pt-2">
+        <div className="text-xs text-slate-500 font-mono">
           พร้อมไปทอยเต๋าแล้ว {players.filter((p) => p.roleAcknowledged).length}/
           {players.length} คน
+          {unacknowledgedPlayers.length > 0 && (
+            <span className="block text-[11px] text-amber-700 mt-0.5">
+              รอ: {unacknowledgedPlayers.map((p) => p.name).join(', ')}
+            </span>
+          )}
         </div>
+
+        {isHost && unacknowledgedPlayers.length > 0 && onForceAdvancePhase && (
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={onForceAdvancePhase}
+              className="px-4 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 text-xs font-extrabold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <FastForward className="w-3.5 h-3.5" />
+              <span>โฮสต์บังคับข้ามคนที่ค้าง → ไปทอยเต๋าทันที</span>
+            </button>
+          </div>
+        )}
       </div>
     </motion.div>
   );

@@ -20,13 +20,14 @@ export interface UseInsiderGameMasterReturn {
   setIsHostVoiceEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   insiderRevealCountdown: number | null;
   setInsiderRevealCountdown: React.Dispatch<React.SetStateAction<number | null>>;
+  insiderRevealStage: 'idle' | 'master_closing' | 'insider_peeking';
   quizSecondsLeft: number;
   discussionSecondsLeft: number;
 }
 
 /**
  * Custom Hook isolating Thai Game Master Speech Synthesizer (TTS),
- * 6-second Insider peek countdown, sand-timer quiz countdown,
+ * 2-Stage Insider peek countdown (3s Master + 8s Insider), sand-timer quiz countdown,
  * discussion timer, and victory audio fanfare.
  */
 export function useInsiderGameMaster({
@@ -36,8 +37,12 @@ export function useInsiderGameMaster({
 }: UseInsiderGameMasterOptions): UseInsiderGameMasterReturn {
   const [isHostVoiceEnabled, setIsHostVoiceEnabled] = useState<boolean>(true);
   const [insiderRevealCountdown, setInsiderRevealCountdown] = useState<number | null>(null);
+  const [insiderRevealStage, setInsiderRevealStage] = useState<
+    'idle' | 'master_closing' | 'insider_peeking'
+  >('idle');
   const [quizSecondsLeft, setQuizSecondsLeft] = useState<number>(180);
   const [discussionSecondsLeft, setDiscussionSecondsLeft] = useState<number>(120);
+  const timerSequenceActiveRef = useState<{ activeKey: string }>({ activeKey: '' })[0];
 
   // Stop ongoing narration on unmount
   useEffect(() => {
@@ -46,17 +51,23 @@ export function useInsiderGameMaster({
     };
   }, []);
 
-  // STEP 3: Night Secret Word Reveal + Insider 6-Second Peek Countdown
+  // STEP 3: Night Secret Word Reveal + 2-Stage Smooth Sequence
+  // Stage 1: Master Close Eyes (3s) -> Stage 2: Insider Peek Word (8s) (Total 11s)
   useEffect(() => {
     if (!activeRoom || activeRoom.status !== 'word_reveal') {
       setInsiderRevealCountdown(null);
+      setInsiderRevealStage('idle');
+      timerSequenceActiveRef.activeKey = '';
       return;
     }
 
     const isHost = activeRoom.hostId === currentUid;
 
+    // Stage 0: Master is checking and confirming the word
     if (!activeRoom.insiderEyesOpen) {
       setInsiderRevealCountdown(null);
+      setInsiderRevealStage('idle');
+      timerSequenceActiveRef.activeKey = '';
       if (isHost && isHostVoiceEnabled) {
         thaiGameMaster.speakInsiderMasterWordCheck();
       } else {
@@ -65,36 +76,80 @@ export function useInsiderGameMaster({
       return;
     }
 
-    setInsiderRevealCountdown(6);
+    // Guard: Prevent re-initializing the 11-second sequence on every Firestore snapshot
+    const sequenceKey = `${activeRoom.id}_${activeRoom.secretWord}_revealed`;
+    if (timerSequenceActiveRef.activeKey === sequenceKey) {
+      return;
+    }
+    timerSequenceActiveRef.activeKey = sequenceKey;
+
+    // STAGE 1: Master Closes Eyes (3 Seconds)
+    setInsiderRevealStage('master_closing');
+    setInsiderRevealCountdown(3);
     if (isHost && isHostVoiceEnabled) {
-      thaiGameMaster.speakInsiderWakeToPeekWord();
+      thaiGameMaster.speakInsiderMasterCloseEyes();
     } else {
-      tableAudio.playHourChime(3);
+      tableAudio.playSleepChime();
     }
 
-    const interval = window.setInterval(() => {
-      setInsiderRevealCountdown((prev) => {
-        const current = prev ?? 6;
-        if (current === 2 && isHost && isHostVoiceEnabled) {
-          thaiGameMaster.speakInsiderCloseEyes();
+    let remainingInStage1 = 3;
+    const stage1Interval = window.setInterval(() => {
+      remainingInStage1 -= 1;
+      setInsiderRevealCountdown(remainingInStage1);
+
+      if (remainingInStage1 <= 0) {
+        window.clearInterval(stage1Interval);
+
+        // STAGE 2: Insider Wakes Up & Peeks (8 Seconds)
+        setInsiderRevealStage('insider_peeking');
+        setInsiderRevealCountdown(8);
+        if (isHost && isHostVoiceEnabled) {
+          thaiGameMaster.speakInsiderWakeToPeekWord();
+        } else {
+          tableAudio.playHourChime(4);
         }
-        if (current <= 1) {
-          window.clearInterval(interval);
-          if (isHost) {
-            startInsiderQuizPhase(activeRoom.id);
+
+        let remainingInStage2 = 8;
+        const stage2Interval = window.setInterval(() => {
+          remainingInStage2 -= 1;
+          setInsiderRevealCountdown(remainingInStage2);
+
+          // Alert 2 seconds before closing
+          if (remainingInStage2 === 2 && isHost && isHostVoiceEnabled) {
+            thaiGameMaster.speakInsiderCloseEyes();
           }
-          return 0;
-        }
-        return current - 1;
-      });
+
+          if (remainingInStage2 <= 0) {
+            window.clearInterval(stage2Interval);
+            setInsiderRevealCountdown(null);
+            setInsiderRevealStage('idle');
+
+            // Safe transition to Quiz Phase by Host or fallback after 2.2s if Host screen locked
+            const isPrimaryActive =
+              isHost &&
+              typeof document !== 'undefined' &&
+              document.visibilityState === 'visible';
+            if (isPrimaryActive) {
+              startInsiderQuizPhase(activeRoom.id);
+            } else {
+              window.setTimeout(() => {
+                startInsiderQuizPhase(activeRoom.id);
+              }, 2200);
+            }
+          }
+        }, 1000);
+      }
     }, 1000);
 
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearInterval(stage1Interval);
+    };
   }, [
     activeRoom?.id,
     activeRoom?.status,
     activeRoom?.insiderEyesOpen,
     activeRoom?.hostId,
+    activeRoom?.secretWord,
     currentUid,
     isHostVoiceEnabled,
   ]);
@@ -119,8 +174,16 @@ export function useInsiderGameMaster({
       setQuizSecondsLeft((prev) => {
         if (prev <= 1) {
           window.clearInterval(interval);
-          if (isHost) {
+          const isPrimaryActive =
+            isHost &&
+            typeof document !== 'undefined' &&
+            document.visibilityState === 'visible';
+          if (isPrimaryActive) {
             triggerInsiderQuizTimeout(activeRoom.id);
+          } else {
+            window.setTimeout(() => {
+              triggerInsiderQuizTimeout(activeRoom.id);
+            }, 2200);
           }
           return 0;
         }
@@ -235,6 +298,7 @@ export function useInsiderGameMaster({
     setIsHostVoiceEnabled,
     insiderRevealCountdown,
     setInsiderRevealCountdown,
+    insiderRevealStage,
     quizSecondsLeft,
     discussionSecondsLeft,
   };
