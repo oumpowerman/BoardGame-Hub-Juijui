@@ -39,7 +39,16 @@ export type GamePhase =
   | 'hc_clue_2'
   | 'hc_guess_2'
   | 'hc_scoring'
-  | 'hc_game_over';
+  | 'hc_game_over'
+  // Dying Message phases
+  | 'dm_role_deal'
+  | 'dm_night_kill'
+  | 'dm_victim_clue'
+  | 'dm_special_roles'
+  | 'dm_day_discussion'
+  | 'dm_voting'
+  | 'dm_round_verdict'
+  | 'dm_game_over';
 
 export type PlayerRoleCard =
   | 'cheese_thief'
@@ -67,7 +76,24 @@ export type PlayerRoleCard =
   | 'avalon_minion'
   // Hues and Cues roles
   | 'hc_clue_giver'
-  | 'hc_guesser';
+  | 'hc_guesser'
+  // Dying Message roles
+  | 'dm_killer'
+  | 'dm_accomplice'
+  | 'dm_detective'
+  | 'dm_doctor'
+  | 'dm_civilian';
+
+export interface DyingMessageEvidenceRound {
+  roundNumber: number;
+  victimId: string;
+  victimName: string;
+  victimAvatar?: string;
+  cardIds: string[]; // 3 shuffled cards (1 real + 2 fake)
+  realCardId: string; // Secret until game over
+  fakeCardIds: string[];
+  eliminatedFakeCardId?: string; // If Forensic Doctor used skill on this round
+}
 
 export interface UndercoverClueEntry {
   round: number;
@@ -99,7 +125,14 @@ export interface FirestoreRoom {
   id: string;
   roomCode: string;
   roomName?: string;
-  gameId: 'cheese-thief' | 'insider' | 'undercover' | 'detective-club' | 'avalon' | 'hues-cues';
+  gameId:
+    | 'cheese-thief'
+    | 'insider'
+    | 'undercover'
+    | 'detective-club'
+    | 'avalon'
+    | 'hues-cues'
+    | 'dying-message';
   hostId: string;
   hostName: string;
   status: GamePhase;
@@ -110,6 +143,15 @@ export interface FirestoreRoom {
   followerIds?: string[]; // UIDs of players who became Followers (ลูกน้อง)
   cheeseNightDuration?: number; // Duration in seconds per night hour (default 10)
   cheeseNightPaused?: boolean; // Whether night countdown is paused by host
+  // Cheese Thief iPad Table & Multi-Round Cumulative Scoreboard Fields
+  ctIpadConnected?: boolean;
+  ctIpadLastSeen?: string;
+  ctRoundNumber?: number;
+  ctScores?: Record<string, number>;
+  ctRoundScores?: Record<string, number>;
+  ctWinsCount?: Record<string, number>;
+  ctThiefCount?: Record<string, number>;
+  ctSessionSummaryOpen?: boolean;
   // Insider Specific Fields
   wordCategory?: InsiderWordCategoryId;
   wordCategoryLabel?: string;
@@ -198,6 +240,30 @@ export interface FirestoreRoom {
   hcGuesses?: Record<string, HuesCuesGuessEntry>;
   hcScores?: Record<string, number>;
   hcRoundScores?: Record<string, number>;
+  // Dying Message Specific Fields
+  dmIpadConnected?: boolean;
+  dmIpadLastSeen?: string;
+  dmRoundNumber?: number;
+  dmCategory?: 'all' | 'appearance' | 'personality' | 'lifestyle' | 'avatar_vibe';
+  dmEnableDetective?: boolean;
+  dmEnableDoctor?: boolean;
+  dmEnableAccomplice?: boolean;
+  dmDebateDurationSeconds?: number;
+  dmKillerId?: string;
+  dmKillerName?: string;
+  dmAccompliceId?: string;
+  dmAccompliceName?: string;
+  dmDetectiveId?: string;
+  dmDoctorId?: string;
+  dmVictimId?: string;
+  dmVictimName?: string;
+  dmEvidenceRounds?: DyingMessageEvidenceRound[];
+  dmDoctorSkillUsed?: boolean;
+  dmDetectiveSkillDoneRound?: number;
+  dmLastEliminatedId?: string;
+  dmLastEliminatedName?: string;
+  dmLastEliminatedRole?: PlayerRoleCard;
+  dmScores?: Record<string, number>;
   winnerTeam:
     | 'mice'
     | 'thief'
@@ -211,6 +277,8 @@ export interface FirestoreRoom {
     | 'conspirator'
     | 'good'
     | 'evil'
+    | 'dm_civilians'
+    | 'dm_killer'
     | 'nobody'
     | 'in_progress'
     | 'none';
@@ -255,6 +323,13 @@ export interface FirestorePlayer {
   // Hues and Cues Specific Fields
   hcSelectedTileId?: string;
   hcTotalScore?: number;
+  // Dying Message Specific Fields
+  dmIsAlive?: boolean;
+  dmCandidateCards?: string[];
+  dmSelectedCardIds?: string[];
+  dmInspectedTargetId?: string;
+  dmInspectedTargetName?: string;
+  dmInspectedIsKiller?: boolean;
   joinedAt: string;
 }
 

@@ -100,6 +100,7 @@ test('ELO delta and leaderboard update sort players accurately', () => {
         'werewolf-night': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         'catan-frontier': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         'hues-cues': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
+        'dying-message': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
       },
     },
     {
@@ -123,6 +124,7 @@ test('ELO delta and leaderboard update sort players accurately', () => {
         'werewolf-night': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         'catan-frontier': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         'hues-cues': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
+        'dying-message': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
       },
     },
   ];

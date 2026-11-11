@@ -18,6 +18,71 @@ import {
 } from './roomHelpers';
 import { recordGameEloUpdates } from './leaderboardService';
 
+// 0. Register or Unregister iPad Central Cheese Table (Optional Companion Board)
+export async function registerCheeseThiefIpadBoard(
+  roomId: string,
+  connected: boolean = true
+): Promise<void> {
+  await ensureAuthUser();
+  try {
+    await updateDoc(doc(db, 'rooms', roomId), {
+      ctIpadConnected: connected,
+      ctIpadLastSeen: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}`);
+  }
+}
+
+// 0.1 Open or Close Table Session Scoreboard Summary Modal across devices
+export async function toggleCheeseThiefSessionSummary(
+  roomId: string,
+  isOpen: boolean
+): Promise<void> {
+  await ensureAuthUser();
+  try {
+    await updateDoc(doc(db, 'rooms', roomId), {
+      ctSessionSummaryOpen: isOpen,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}`);
+  }
+}
+
+// 0.2 Reset Cumulative Table Scores to Zero for a New Session
+export async function resetCheeseThiefTableScores(
+  roomId: string
+): Promise<void> {
+  await ensureAuthUser();
+  const roomRef = doc(db, 'rooms', roomId);
+  try {
+    const playersSnap = await getDocs(
+      collection(db, 'rooms', roomId, 'players')
+    );
+    const freshScores: Record<string, number> = {};
+    const freshWins: Record<string, number> = {};
+    const freshThief: Record<string, number> = {};
+    playersSnap.docs.forEach((d) => {
+      freshScores[d.id] = 0;
+      freshWins[d.id] = 0;
+      freshThief[d.id] = 0;
+    });
+
+    await updateDoc(roomRef, {
+      ctRoundNumber: 0,
+      ctScores: freshScores,
+      ctRoundScores: {},
+      ctWinsCount: freshWins,
+      ctThiefCount: freshThief,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `rooms/${roomId}`);
+  }
+}
+
 // 1. Toggle Fall Mouse Special Mode in Lobby (for 6-8 players)
 export async function toggleFallMouseMode(
   roomId: string,
@@ -94,8 +159,21 @@ export async function startGameAndDealRoles(roomId: string): Promise<void> {
     }
 
     let initialStolenHour = 0;
+    const nextScores: Record<string, number> = { ...(roomData?.ctScores || {}) };
+    const nextWins: Record<string, number> = { ...(roomData?.ctWinsCount || {}) };
+    const nextThiefCount: Record<string, number> = {
+      ...(roomData?.ctThiefCount || {}),
+    };
 
     for (let i = 0; i < players.length; i++) {
+      const pid = players[i].id;
+      if (nextScores[pid] === undefined) nextScores[pid] = 0;
+      if (nextWins[pid] === undefined) nextWins[pid] = 0;
+      if (nextThiefCount[pid] === undefined) nextThiefCount[pid] = 0;
+      if (roles[i] === 'cheese_thief') {
+        nextThiefCount[pid] = (nextThiefCount[pid] || 0) + 1;
+      }
+
       const isBotOrPulledFriend = isAutoControlledSeat(players[i], user.uid);
 
       let preRoll1 = 0;
@@ -106,8 +184,8 @@ export async function startGameAndDealRoles(roomId: string): Promise<void> {
         preRoll1 = Math.floor(1 + Math.random() * 6);
         if (isFourPlayerDualDice) {
           preRoll2 = Math.floor(1 + Math.random() * 6);
-          if (preRoll2 === preRoll1) {
-            preRoll2 = (preRoll1 % 6) + 1;
+          while (preRoll2 === preRoll1) {
+            preRoll2 = Math.floor(1 + Math.random() * 6);
           }
           pair = [preRoll1, preRoll2];
         } else {
@@ -118,7 +196,7 @@ export async function startGameAndDealRoles(roomId: string): Promise<void> {
         }
       }
 
-      await updateDoc(doc(db, 'rooms', roomId, 'players', players[i].id), {
+      await updateDoc(doc(db, 'rooms', roomId, 'players', pid), {
         role: roles[i],
         isFollower: false,
         roleAcknowledged: isBotOrPulledFriend,
@@ -133,12 +211,20 @@ export async function startGameAndDealRoles(roomId: string): Promise<void> {
       });
     }
 
+    const nextRoundNumber = (roomData?.ctRoundNumber || 0) + 1;
+
     await updateDoc(roomRef, {
       status: 'role_deal',
       nightHour: 0,
       stolenHour: initialStolenHour,
       cheeseStolen: false,
       followerIds: [],
+      ctRoundNumber: nextRoundNumber,
+      ctScores: nextScores,
+      ctRoundScores: {},
+      ctWinsCount: nextWins,
+      ctThiefCount: nextThiefCount,
+      ctSessionSummaryOpen: false,
       winnerTeam: 'in_progress',
       accusedPlayerId: '',
       playerCount: totalPlayers,
@@ -245,13 +331,26 @@ export async function submitSecretDiceRoll(
   }
 }
 
-// 5. Cheese Thief Action: Grab & Hide the Cheese on their wake hour
+// 5. Cheese Thief Action: Grab & Hide the Cheese on their wake hour (Works from Phone OR iPad Central Table)
 export async function grabCheeseInNight(roomId: string): Promise<void> {
   const user = await ensureAuthUser();
   try {
-    await updateDoc(doc(db, 'rooms', roomId, 'players', user.uid), {
-      hasGrabbedCheese: true,
-    });
+    const playersSnap = await getDocs(
+      collection(db, 'rooms', roomId, 'players')
+    );
+    const thiefDoc = playersSnap.docs.find(
+      (d) => (d.data() as FirestorePlayer).role === 'cheese_thief'
+    );
+    const targetPlayerId = thiefDoc ? thiefDoc.id : user.uid;
+
+    const targetRef = doc(db, 'rooms', roomId, 'players', targetPlayerId);
+    const targetSnap = await getDoc(targetRef);
+    if (targetSnap.exists()) {
+      await updateDoc(targetRef, {
+        hasGrabbedCheese: true,
+      });
+    }
+
     await updateDoc(doc(db, 'rooms', roomId), {
       cheeseStolen: true,
       updatedAt: new Date().toISOString(),
@@ -425,7 +524,7 @@ export async function confirmFollowerPhaseToMorning(
   }
 }
 
-// 10. Cast Simultaneous Vote ("Who is the Cheese Thief? 3–2–1 VOTE!")
+// 10. Cast Simultaneous Vote ("Who is the Cheese Thief? 3–2–1 VOTE!") & Calculate Cumulative Round Points
 export async function castAccusationVote(
   roomId: string,
   targetPlayerId: string
@@ -439,9 +538,11 @@ export async function castAccusationVote(
       voteTargetId: targetPlayerId,
     });
 
-    const playersSnap = await getDocs(
-      collection(db, 'rooms', roomId, 'players')
-    );
+    const [roomSnap, playersSnap] = await Promise.all([
+      getDoc(roomRef),
+      getDocs(collection(db, 'rooms', roomId, 'players')),
+    ]);
+    const roomData = roomSnap.data() as FirestoreRoom | undefined;
     const players = playersSnap.docs.map((d) => d.data() as FirestorePlayer);
 
     for (const p of players) {
@@ -481,6 +582,7 @@ export async function castAccusationVote(
       });
 
       const accusedPlayer = players.find((p) => p.id === accusedId);
+      const thiefPlayer = players.find((p) => p.role === 'cheese_thief');
 
       let winnerTeam: 'mice' | 'thief' | 'fall_mouse' = 'thief';
       if (accusedPlayer?.role === 'fall_mouse') {
@@ -491,10 +593,62 @@ export async function castAccusationVote(
         winnerTeam = 'thief';
       }
 
+      // Calculate Cumulative Table Points per Player for this Round
+      const nextScores: Record<string, number> = {
+        ...(roomData?.ctScores || {}),
+      };
+      const roundScores: Record<string, number> = {};
+      const nextWinsCount: Record<string, number> = {
+        ...(roomData?.ctWinsCount || {}),
+      };
+
+      players.forEach((p) => {
+        const effectiveVote = p.id === user.uid ? targetPlayerId : p.voteTargetId;
+        let pts = 0;
+        let wonRound = false;
+
+        if (winnerTeam === 'fall_mouse') {
+          if (p.role === 'fall_mouse') {
+            pts = 3; // Solo Victory for Fall Mouse
+            wonRound = true;
+          }
+        } else if (winnerTeam === 'thief') {
+          if (p.role === 'cheese_thief') {
+            pts = 2; // Master Thief Escaped
+            wonRound = true;
+          } else if (p.isFollower || roomData?.followerIds?.includes(p.id)) {
+            pts = 1; // Follower Accomplice Win
+            wonRound = true;
+          }
+        } else if (winnerTeam === 'mice') {
+          const isFollower =
+            Boolean(p.isFollower) ||
+            Boolean(roomData?.followerIds?.includes(p.id));
+          if (p.role === 'sleepy_mouse' && !isFollower) {
+            pts = 1; // Sleepy Mouse Team Win
+            if (thiefPlayer && effectiveVote === thiefPlayer.id) {
+              pts += 1; // +1 Detective Bonus for voting directly on the Thief
+            }
+            wonRound = true;
+          }
+        }
+
+        roundScores[p.id] = pts;
+        nextScores[p.id] = (nextScores[p.id] || 0) + pts;
+        if (wonRound) {
+          nextWinsCount[p.id] = (nextWinsCount[p.id] || 0) + 1;
+        } else if (nextWinsCount[p.id] === undefined) {
+          nextWinsCount[p.id] = 0;
+        }
+      });
+
       await updateDoc(roomRef, {
         status: 'game_over',
         winnerTeam,
         accusedPlayerId: accusedId,
+        ctScores: nextScores,
+        ctRoundScores: roundScores,
+        ctWinsCount: nextWinsCount,
         updatedAt: new Date().toISOString(),
       });
 

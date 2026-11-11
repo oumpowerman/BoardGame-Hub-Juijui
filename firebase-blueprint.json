@@ -112,7 +112,7 @@
         },
         "gameId": {
           "type": "string",
-          "enum": ["cheese-thief", "insider", "undercover", "detective-club", "avalon", "hues-cues"],
+          "enum": ["cheese-thief", "insider", "undercover", "detective-club", "avalon", "hues-cues", "dying-message"],
           "description": "Game type selected for this tabletop room"
         },
         "hostId": {
@@ -161,7 +161,15 @@
             "hc_clue_2",
             "hc_guess_2",
             "hc_scoring",
-            "hc_game_over"
+            "hc_game_over",
+            "dm_role_deal",
+            "dm_night_kill",
+            "dm_victim_clue",
+            "dm_special_roles",
+            "dm_day_discussion",
+            "dm_voting",
+            "dm_round_verdict",
+            "dm_game_over"
           ],
           "description": "Current lifecycle phase of the board game"
         },
@@ -172,6 +180,18 @@
         "stolenHour": {
           "type": "number",
           "description": "The secret hour when the cheese was stolen by the Cheese Thief"
+        },
+        "cheeseStolen": {
+          "type": "boolean",
+          "description": "Whether the cheese has been stolen from the central table"
+        },
+        "ctIpadConnected": {
+          "type": "boolean",
+          "description": "Whether an optional iPad Central Cheese Table is connected to this room"
+        },
+        "ctRoundNumber": {
+          "type": "number",
+          "description": "Current cumulative round number played at this Cheese Thief table"
         },
         "dcSecretWord": {
           "type": "string",
@@ -190,6 +210,14 @@
           "type": "number",
           "description": "Physical card placement round on table (1 or 2)"
         },
+        "dmIpadConnected": {
+          "type": "boolean",
+          "description": "Whether an iPad Central Evidence Board is connected to this Dying Message room"
+        },
+        "dmRoundNumber": {
+          "type": "number",
+          "description": "Current night/day investigation round in Dying Message"
+        },
         "winnerTeam": {
           "type": "string",
           "enum": [
@@ -203,6 +231,8 @@
             "mr_white",
             "detectives",
             "conspirator",
+            "dm_civilians",
+            "dm_killer",
             "nobody",
             "in_progress",
             "none"

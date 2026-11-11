@@ -71,7 +71,7 @@ service cloud.firestore {
       return data.roomCode is string &&
              data.roomCode.size() == 4 &&
              data.roomCode.matches('^[0-9]{4}$') &&
-             data.gameId in ['cheese-thief', 'insider', 'undercover', 'detective-club', 'avalon', 'hues-cues'] &&
+             data.gameId in ['cheese-thief', 'insider', 'undercover', 'detective-club', 'avalon', 'hues-cues', 'dying-message'] &&
              data.hostId is string &&
              data.hostId.size() <= 128 &&
              data.status in [
@@ -109,7 +109,15 @@ service cloud.firestore {
                'hc_clue_2',
                'hc_guess_2',
                'hc_scoring',
-               'hc_game_over'
+               'hc_game_over',
+               'dm_role_deal',
+               'dm_night_kill',
+               'dm_victim_clue',
+               'dm_special_roles',
+               'dm_day_discussion',
+               'dm_voting',
+               'dm_round_verdict',
+               'dm_game_over'
              ];
     }
 

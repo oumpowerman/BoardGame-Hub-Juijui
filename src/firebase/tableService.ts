@@ -20,3 +20,5 @@ export * from './table/undercoverService';
 export * from './table/detectiveClubService';
 export * from './table/avalonService';
 export * from './table/huesCuesService';
+export * from './table/dyingMessageService';
+

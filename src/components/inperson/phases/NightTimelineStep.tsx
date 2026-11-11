@@ -257,23 +257,25 @@ export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
                 </div>
               </div>
             ) : currentHour === currentRoom.stolenHour ? (
-              /* STATE 2: HEIST HOUR -> Trembling Cheese + Sneaking Paw Prints */
+              /* STATE 2: HEIST HOUR -> Animated Thief Mouse Stealing the Cheese */
               <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-100 via-orange-50 to-amber-100 border-2 border-amber-400 shadow-sm flex flex-col sm:flex-row items-center justify-center gap-4 text-center sm:text-left relative overflow-hidden">
-                <div className="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-white border-2 border-amber-400 shadow-xs shrink-0">
-                  <motion.span
+                <div className="relative flex items-center justify-center w-24 h-20 rounded-2xl bg-white border-2 border-amber-400 shadow-xs shrink-0">
+                  <motion.div
                     animate={{
-                      scale: [1, 1.12, 0.92, 1],
-                      rotate: [-8, 8, -6, 0],
+                      x: [-5, 6, -5],
+                      scale: [1, 1.08, 0.96, 1],
+                      rotate: [-6, 6, -4, 0],
                     }}
                     transition={{
-                      duration: 0.85,
+                      duration: 0.9,
                       repeat: Infinity,
                       ease: 'easeInOut',
                     }}
-                    className="text-4xl select-none block"
+                    className="flex items-center justify-center gap-0.5 select-none"
                   >
-                    🧀
-                  </motion.span>
+                    <span className="text-4xl">🐭</span>
+                    <span className="text-3xl">🧀</span>
+                  </motion.div>
                   <motion.span
                     animate={{ x: [6, 0, 6], opacity: [0.5, 1, 0.5] }}
                     transition={{ duration: 0.75, repeat: Infinity }}
@@ -285,15 +287,15 @@ export const NightTimelineStep: React.FC<NightTimelineStepProps> = ({
 
                 <div className="space-y-1">
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400 text-amber-950">
-                    ⚡ HEIST IN PROGRESS · ชั่วโมงลงมือ!
+                    ⚡ HEIST IN PROGRESS · หนูขโมยกำลังลงมือ!
                   </span>
                   <div className="text-base sm:text-lg font-black text-amber-950">
                     {currentRoom.cheeseStolen || myPlayer?.hasGrabbedCheese
-                      ? '🐾 ชีสเพิ่งถูกคว้าไปซ่อนในชั่วโมงนี้!'
-                      : '⚡ จอมโจรชีสกำลังขโมยชีสในชั่วโมงนี้!'}
+                      ? '🐭💨 หนูจอมโจรอุ้มชีสหนีไปในชั่วโมงนี้แล้ว!'
+                      : '🐭🧀 เห็นหนูจอมโจรกำลังย่องมาขโมยชีสกลางโต๊ะ!'}
                   </div>
                   <p className="text-xs text-amber-900 font-medium">
-                    ชั่วโมงตี {currentHour}:00 น. คือชั่วโมงที่ก้อนชีสถูกขโมยไปจากกลางโต๊ะ!
+                    ชั่วโมงตี {currentHour}:00 น. ชีสยังอยู่ตอนลืมตา และหนูจอมโจรกำลังลงมือขโมยชีสในชั่วโมงนี้! (กดขโมยได้ทั้งบนจอ iPad โต๊ะกลางและบนมือถือ)
                   </p>
                 </div>
               </div>

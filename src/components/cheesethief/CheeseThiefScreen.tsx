@@ -38,6 +38,9 @@ import {
   cleanupHostPreviousRooms,
   leaveOrCloseTableRoom,
   updatePlayerAvatarInRoom,
+  registerCheeseThiefIpadBoard,
+  toggleCheeseThiefSessionSummary,
+  resetCheeseThiefTableScores,
 } from '../../firebase/tableService';
 import {
   UserProfile,
@@ -53,6 +56,8 @@ import { CheeseThiefTopBar } from './CheeseThiefTopBar';
 import { CheeseThiefSpeakerBar } from './CheeseThiefSpeakerBar';
 import { CheeseThiefActiveRoomHeader } from './CheeseThiefActiveRoomHeader';
 import { CheeseThiefInvitesBanner } from './CheeseThiefInvitesBanner';
+import { CheeseThiefCentralBoard } from './CheeseThiefCentralBoard';
+import { CheeseThiefScoreModal } from './CheeseThiefScoreModal';
 import { useCheeseThiefGameMaster } from './useCheeseThiefGameMaster';
 
 export interface CheeseThiefScreenProps {
@@ -120,6 +125,8 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
   const [quickJoinCode, setQuickJoinCode] = useState<string>(initialRoomCode);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [isDisbandModalOpen, setIsDisbandModalOpen] = useState<boolean>(false);
+  const [isIpadBoardView, setIsIpadBoardView] = useState<boolean>(false);
+  const [isScoreModalOpen, setIsScoreModalOpen] = useState<boolean>(false);
 
   // Common Room Scene Transition
   const {
@@ -156,10 +163,22 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Quick join if passed an initial room code
+  // Quick join if passed an initial room code or ?mode=board URL parameter
   useEffect(() => {
-    if (initialRoomCode && initialRoomCode.trim()) {
-      handleJoinByIdOrCode(initialRoomCode.trim());
+    const params =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search)
+        : null;
+    const isBoardMode = params?.get('mode') === 'board';
+    const roomFromUrl = params?.get('room') || params?.get('code') || '';
+    const targetCode = (initialRoomCode || roomFromUrl).trim();
+
+    if (isBoardMode) {
+      setIsIpadBoardView(true);
+    }
+
+    if (targetCode) {
+      handleJoinByIdOrCode(targetCode, isBoardMode);
     }
   }, [initialRoomCode]);
 
@@ -309,8 +328,8 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
     onBackToCatalog();
   };
 
-  // Join by 4-Digit Code or ID
-  const handleJoinByIdOrCode = async (target?: string) => {
+  // Join by 4-Digit Code or ID (supports Player Phone or Zero-Seat iPad Board)
+  const handleJoinByIdOrCode = async (target?: string, asBoard = false) => {
     const clean = (target ?? quickJoinCode).trim();
     if (!clean || isLoading) return;
     setIsLoading(true);
@@ -318,7 +337,11 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
 
     await runJoinRoomTransition(clean, async () => {
       if (clean.startsWith('room_')) {
-        await joinTableRoom(clean, currentUser.accountName);
+        if (asBoard) {
+          await registerCheeseThiefIpadBoard(clean, true);
+        } else {
+          await joinTableRoom(clean, currentUser.accountName);
+        }
         setSelectedRoomId(clean);
         setQuickJoinCode('');
         return { roomCode: clean };
@@ -337,7 +360,11 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
         throw new Error(msg);
       }
 
-      await joinTableRoom(found.id, currentUser.accountName);
+      if (asBoard) {
+        await registerCheeseThiefIpadBoard(found.id, true);
+      } else {
+        await joinTableRoom(found.id, currentUser.accountName);
+      }
       setActiveRoom(found);
       setSelectedRoomId(found.id);
       setQuickJoinCode('');
@@ -392,7 +419,12 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
     setErrorMessage(null);
 
     await runStartGameTransition(activeRoom.roomCode, async () => {
-      if (!players.some((p) => p.id === currentUser.uid)) {
+      const isDedicatedIpadSession =
+        isIpadBoardView && currentUser.friendCode === 'IPAD00';
+      if (
+        !isDedicatedIpadSession &&
+        !players.some((p) => p.id === currentUser.uid)
+      ) {
         await joinTableRoom(activeRoom.id, currentUser.accountName);
       }
       setRolledDicePair([]);
@@ -411,8 +443,8 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
     const isFourPlayer = players.length === 4;
     const d1 = Math.floor(1 + Math.random() * 6);
     let d2 = Math.floor(1 + Math.random() * 6);
-    if (d2 === d1) {
-      d2 = (d1 % 6) + 1;
+    while (d2 === d1) {
+      d2 = Math.floor(1 + Math.random() * 6);
     }
 
     setTimeout(() => {
@@ -465,6 +497,41 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSwitchToIpadTable = async () => {
+    if (!activeRoom) return;
+    setIsIpadBoardView(true);
+    await registerCheeseThiefIpadBoard(activeRoom.id, true);
+    showToast('สลับเป็นหน้าจอกระดานกลาง iPad เรียบร้อยแล้ว');
+  };
+
+  const handleSwitchToPhoneView = async () => {
+    setIsIpadBoardView(false);
+    if (activeRoom && !players.some((p) => p.id === currentUser.uid)) {
+      await joinTableRoom(activeRoom.id, currentUser.accountName);
+    }
+    showToast('สลับเป็นหน้าจอมือถือผู้เล่นแล้ว');
+  };
+
+  const handleOpenScoreModal = async () => {
+    setIsScoreModalOpen(true);
+    if (activeRoom && activeRoom.hostId === currentUser.uid) {
+      await toggleCheeseThiefSessionSummary(activeRoom.id, true);
+    }
+  };
+
+  const handleCloseScoreModal = async () => {
+    setIsScoreModalOpen(false);
+    if (activeRoom && activeRoom.ctSessionSummaryOpen) {
+      await toggleCheeseThiefSessionSummary(activeRoom.id, false);
+    }
+  };
+
+  const handleResetTableScores = async () => {
+    if (!activeRoom) return;
+    await resetCheeseThiefTableScores(activeRoom.id);
+    showToast('รีเซ็ตคะแนนสะสมประจำโต๊ะเป็น 0 เรียบร้อยแล้ว');
   };
 
   const handleToggleVoice = () => {
@@ -562,6 +629,37 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
               onDeleteRoom={handleDeleteRoom}
               onOpenFriendModal={onOpenFriendModal}
             />
+          ) : isIpadBoardView ? (
+            <motion.div
+              key={`cheese-ipad-board-${activeRoom.id}`}
+              initial={{ opacity: 0, y: 16, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -12, scale: 0.99 }}
+              transition={{ duration: 0.26, ease: 'easeOut' }}
+              className="max-w-5xl mx-auto w-full"
+            >
+              <CheeseThiefCentralBoard
+                room={activeRoom}
+                players={players}
+                currentUid={currentUser.uid}
+                isHostVoiceEnabled={isHostVoiceEnabled}
+                hourSecondsLeft={hourSecondsLeft}
+                debateSecondsLeft={debateSecondsLeft}
+                isLoading={isLoading}
+                onToggleVoice={handleToggleVoice}
+                onTestVoice={() => thaiGameMaster.testVoice()}
+                onSwitchToPhoneView={handleSwitchToPhoneView}
+                onOpenScoreModal={handleOpenScoreModal}
+                onOpenShareModal={() => setIsShareModalOpen(true)}
+                onStartGame={handleStartGame}
+                onGrabCheese={() => grabCheeseInNight(activeRoom.id)}
+                onAdvanceNightHour={(h) => advanceNightHour(activeRoom.id, h)}
+                onToggleNightPause={(paused) =>
+                  toggleCheeseNightPause(activeRoom.id, paused)
+                }
+                onPlayAgain={handlePlayAgain}
+              />
+            </motion.div>
           ) : (
             <motion.div
               key={`cheese-room-${activeRoom.id}`}
@@ -577,7 +675,11 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
                 roomName={activeRoom.roomName}
                 hostName={activeRoom.hostName}
                 isHost={activeRoom.hostId === currentUser.uid}
+                roundNumber={activeRoom.ctRoundNumber || 1}
+                isIpadConnected={Boolean(activeRoom.ctIpadConnected)}
                 onOpenShareModal={() => setIsShareModalOpen(true)}
+                onOpenScoreModal={handleOpenScoreModal}
+                onSwitchToIpadTable={handleSwitchToIpadTable}
                 onLeaveOrCloseRoom={handleLeaveOrCloseRoom}
               />
 
@@ -626,6 +728,8 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
                       onInviteFriend={handleInviteFriendToRoom}
                       onOpenFriendModal={onOpenFriendModal}
                       onOpenShareModal={() => setIsShareModalOpen(true)}
+                      onSwitchToIpadTable={handleSwitchToIpadTable}
+                      onOpenScoreModal={handleOpenScoreModal}
                     />
                   </motion.div>
                 ) : (
@@ -678,6 +782,7 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
                       onSelectVoteTarget={setSelectedVoteTarget}
                       onCastVote={handleCastVote}
                       onPlayAgain={handlePlayAgain}
+                      onOpenScoreModal={handleOpenScoreModal}
                     />
                   </motion.div>
                 )}
@@ -690,6 +795,17 @@ export const CheeseThiefScreen: React.FC<CheeseThiefScreenProps> = ({
       {/* Modals rendered via Portal */}
       {activeRoom && (
         <>
+          <CheeseThiefScoreModal
+            isOpen={isScoreModalOpen || Boolean(activeRoom.ctSessionSummaryOpen)}
+            room={activeRoom}
+            players={players}
+            currentUid={currentUser.uid}
+            isLoading={isLoading}
+            onClose={handleCloseScoreModal}
+            onPlayNextRound={handlePlayAgain}
+            onResetScores={handleResetTableScores}
+            onEndAndCloseTable={handleLeaveOrCloseRoom}
+          />
           <ShareRoomModal
             isOpen={isShareModalOpen}
             onClose={() => setIsShareModalOpen(false)}

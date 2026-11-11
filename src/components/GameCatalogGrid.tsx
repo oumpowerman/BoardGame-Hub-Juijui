@@ -26,12 +26,14 @@ interface GameCatalogGridProps {
   realDetectiveClubRoomsCount?: number;
   realAvalonRoomsCount?: number;
   realHuesCuesRoomsCount?: number;
+  realDyingMessageRoomsCount?: number;
   onEnterCheeseThiefScreen: () => void;
   onEnterInsiderScreen?: () => void;
   onEnterUndercoverScreen?: () => void;
   onEnterDetectiveClubScreen?: () => void;
   onEnterAvalonScreen?: () => void;
   onEnterHuesCuesScreen?: () => void;
+  onEnterDyingMessageScreen?: () => void;
   onOpenGameSubForum: (gameSlug: BoardGame['slug']) => void;
   onResetFilter: () => void;
 }
@@ -44,12 +46,14 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
   realDetectiveClubRoomsCount = 0,
   realAvalonRoomsCount = 0,
   realHuesCuesRoomsCount = 0,
+  realDyingMessageRoomsCount = 0,
   onEnterCheeseThiefScreen,
   onEnterInsiderScreen,
   onEnterUndercoverScreen,
   onEnterDetectiveClubScreen,
   onEnterAvalonScreen,
   onEnterHuesCuesScreen,
+  onEnterDyingMessageScreen,
   onOpenGameSubForum,
   onResetFilter,
 }) => {
@@ -168,6 +172,7 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
           const isDetectiveClub = game.slug === 'detective-club';
           const isAvalon = game.slug === 'avalon';
           const isHuesCues = game.slug === 'hues-cues';
+          const isDyingMessage = game.slug === 'dying-message';
 
           // Resolve cover image or Google Drive link
           const activeCoverSource = customCovers[game.slug] || game.coverImage;
@@ -194,6 +199,8 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
                   ? 'border-2 border-emerald-600 shadow-md ring-2 ring-emerald-300/60'
                   : isHuesCues
                   ? 'border-2 border-pink-500 shadow-md ring-2 ring-pink-200/60'
+                  : isDyingMessage
+                  ? 'border-2 border-sky-500 shadow-md ring-2 ring-sky-200/60'
                   : 'border border-rose-100/90 shadow-xs hover:shadow-md'
               }`}
             >
@@ -327,6 +334,12 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
                     </div>
                   )}
 
+                  {isDyingMessage && (
+                    <div className="absolute top-3 left-4 px-3 py-1 bg-sky-600 text-white text-xs font-extrabold rounded-xl shadow-xs">
+                      🔎 เบาะแสมรณะ · เชื่อม iPad กลางโต๊ะ + ซ่อนข้อมูลซ้ำบนมือถือ
+                    </div>
+                  )}
+
                   <div className="absolute bottom-3 left-5 right-5 flex items-end justify-between gap-4 text-white pointer-events-none">
                     <div>
                       <p className="text-xs text-amber-200 font-semibold drop-shadow-xs">
@@ -402,6 +415,14 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
                         <span aria-hidden="true">·</span>
                         <span className="font-bold text-pink-700">
                           โต๊ะทายสีขณะนี้: {realHuesCuesRoomsCount} ห้อง
+                        </span>
+                      </>
+                    )}
+                    {isDyingMessage && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span className="font-bold text-sky-700">
+                          โต๊ะสืบคดีขณะนี้: {realDyingMessageRoomsCount} ห้อง
                         </span>
                       </>
                     )}
@@ -557,6 +578,16 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
                   >
                     <Play className="w-4 h-4 fill-current" />
                     <span>เข้าสู่โต๊ะเล่น Hues & Cues</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                ) : isDyingMessage && onEnterDyingMessageScreen ? (
+                  <button
+                    type="button"
+                    onClick={onEnterDyingMessageScreen}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-extrabold text-white bg-sky-600 hover:bg-sky-500 border border-sky-600 rounded-xl shadow-xs hover:scale-[1.01] active:scale-[0.98] transition-all whitespace-nowrap shrink-0 cursor-pointer min-h-[42px]"
+                  >
+                    <Play className="w-4 h-4 fill-current" />
+                    <span>เข้าสู่โต๊ะเล่นเบาะแสมรณะ</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (

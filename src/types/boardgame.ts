@@ -16,6 +16,7 @@ export interface BoardGame {
     | 'detective-club'
     | 'avalon'
     | 'hues-cues'
+    | 'dying-message'
     | 'werewolf-night'
     | 'catan-frontier';
   titleTh: string;

@@ -29,6 +29,7 @@ import { UndercoverScreen } from './components/undercover/UndercoverScreen';
 import { DetectiveClubScreen } from './components/detectiveclub/DetectiveClubScreen';
 import { AvalonScreen } from './components/avalon/AvalonScreen';
 import { HuesCuesScreen } from './components/huescues/HuesCuesScreen';
+import { DyingMessageScreen } from './components/dyingmessage/DyingMessageScreen';
 import {
   GameSceneTransition,
   TransitionGameVariant,
@@ -112,7 +113,9 @@ export default function App() {
             ? new URLSearchParams(window.location.search)
             : null;
         const isIpadBoardScan =
-          urlParams?.get('game') === 'hues-cues' &&
+          (urlParams?.get('game') === 'hues-cues' ||
+            urlParams?.get('game') === 'cheese-thief' ||
+            urlParams?.get('game') === 'dying-message') &&
           urlParams?.get('mode') === 'board' &&
           Boolean(urlParams?.get('room'));
 
@@ -301,6 +304,12 @@ export default function App() {
             matches: 0,
             wins: 0,
             winRate: 0,
+          },
+          'dying-message': {
+            elo: entry.overallElo,
+            matches: entry.matchesPlayed,
+            wins: entry.wins,
+            winRate: entry.winRate,
           },
         },
       }));
@@ -543,6 +552,29 @@ export default function App() {
     }, 620);
   };
 
+  // Enter Dying Message Screen with Sky Blue Forensic Transition
+  const handleEnterDyingMessageScreen = (roomCode?: string) => {
+    if (transitionTimerRef.current) {
+      window.clearTimeout(transitionTimerRef.current);
+    }
+    setInitialRoomCode(roomCode || '');
+    setSceneTransition({
+      isVisible: true,
+      direction: 'enter',
+      gameVariant: 'dying-message',
+      roomCode,
+    });
+
+    window.setTimeout(() => {
+      setActiveSection('dying-message-screen');
+      window.scrollTo(0, 0);
+    }, 260);
+
+    transitionTimerRef.current = window.setTimeout(() => {
+      setSceneTransition((prev) => ({ ...prev, isVisible: false }));
+    }, 620);
+  };
+
   // Check URL query parameters (?room=... or ?code=...) to auto-join friends
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -564,6 +596,8 @@ export default function App() {
           handleEnterInsiderScreen(targetRoom);
         } else if (gameParam === 'hues-cues') {
           handleEnterHuesCuesScreen(targetRoom);
+        } else if (gameParam === 'dying-message') {
+          handleEnterDyingMessageScreen(targetRoom);
         } else {
           handleEnterCheeseThiefScreen(targetRoom);
         }
@@ -648,6 +682,9 @@ export default function App() {
   const realHuesCuesRooms = firestoreRooms.filter(
     (r) => r.gameId === 'hues-cues'
   );
+  const realDyingMessageRooms = firestoreRooms.filter(
+    (r) => r.gameId === 'dying-message'
+  );
 
   const currentUserEntry: PlayerRankingEntry =
     leaderboard.find((e) => e.id === currentUser.uid) || {
@@ -671,6 +708,7 @@ export default function App() {
         'werewolf-night': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         'catan-frontier': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         'hues-cues': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
+        'dying-message': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
       },
     };
 
@@ -844,6 +882,18 @@ export default function App() {
             );
           }}
         />
+      ) : activeSection === 'dying-message-screen' ? (
+        <DyingMessageScreen
+          currentUser={currentUser}
+          friends={friends}
+          pendingFriendRequestsCount={incomingFriendRequests.length}
+          roomInvites={roomInvites}
+          rooms={firestoreRooms}
+          initialRoomCode={initialRoomCode}
+          onBackToCatalog={() => handleExitGameToSection('catalog', 'dying-message')}
+          onOpenFriendModal={() => setIsFriendModalOpen(true)}
+          onActiveRoomChange={setActiveCheeseRoom}
+        />
       ) : (
         <>
           {/* Top Bar */}
@@ -862,6 +912,8 @@ export default function App() {
             handleEnterAvalonScreen();
           } else if (sec === 'hues-cues-screen') {
             handleEnterHuesCuesScreen();
+          } else if (sec === 'dying-message-screen') {
+            handleEnterDyingMessageScreen();
           } else {
             setActiveSection(sec);
           }
@@ -872,6 +924,7 @@ export default function App() {
         onEnterDetectiveClubScreen={() => handleEnterDetectiveClubScreen()}
         onEnterAvalonScreen={() => handleEnterAvalonScreen()}
         onEnterHuesCuesScreen={() => handleEnterHuesCuesScreen()}
+        onEnterDyingMessageScreen={() => handleEnterDyingMessageScreen()}
         onOpenFriendModal={() => setIsFriendModalOpen(true)}
         onSignOut={handleSignOut}
         currentUser={currentUser}
@@ -883,6 +936,7 @@ export default function App() {
         liveDetectiveClubRoomsCount={realDetectiveClubRooms.length}
         liveAvalonRoomsCount={realAvalonRooms.length}
         liveHuesCuesRoomsCount={realHuesCuesRooms.length}
+        liveDyingMessageRoomsCount={realDyingMessageRooms.length}
       />
 
       {/* Live Notification Toast */}
@@ -931,12 +985,14 @@ export default function App() {
                   realDetectiveClubRoomsCount={realDetectiveClubRooms.length}
                   realAvalonRoomsCount={realAvalonRooms.length}
                   realHuesCuesRoomsCount={realHuesCuesRooms.length}
+                  realDyingMessageRoomsCount={realDyingMessageRooms.length}
                   onEnterCheeseThiefScreen={() => handleEnterCheeseThiefScreen()}
                   onEnterInsiderScreen={() => handleEnterInsiderScreen()}
                   onEnterUndercoverScreen={() => handleEnterUndercoverScreen()}
                   onEnterDetectiveClubScreen={() => handleEnterDetectiveClubScreen()}
                   onEnterAvalonScreen={() => handleEnterAvalonScreen()}
                   onEnterHuesCuesScreen={() => handleEnterHuesCuesScreen()}
+                  onEnterDyingMessageScreen={() => handleEnterDyingMessageScreen()}
                   onOpenGameSubForum={handleOpenGameSubForum}
                   onResetFilter={() => {
                     setSelectedCategory('all');
@@ -978,6 +1034,8 @@ export default function App() {
                     handleEnterAvalonScreen();
                   } else if (gameSlug === 'hues-cues') {
                     handleEnterHuesCuesScreen();
+                  } else if (gameSlug === 'dying-message') {
+                    handleEnterDyingMessageScreen();
                   } else {
                     handleEnterCheeseThiefScreen();
                   }

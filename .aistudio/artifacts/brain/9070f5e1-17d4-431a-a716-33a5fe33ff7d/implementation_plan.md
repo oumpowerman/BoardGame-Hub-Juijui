@@ -1,15 +1,66 @@
-# Implementation Plan - Fix Missing Hues and Cues Catalog Cover Image on Deploy
+# แผนงานขยายคลังการ์ดหลักฐาน "เบาะแสมรณะ (Dying Message)" สู่ระดับ 100 ใบ (4 หมวดหมู่แยกโมดูล)
 
-## Root Cause
-- In `src/data/seedData.ts`, all other board games reference their cover image from the Vite static `/public/images/` directory (e.g., `'/images/game_avalon.jpg'`, `'/images/game_cheese_thief_1794065328864.jpg'`), which Vite automatically copies into `dist/images/` during `npm run build` (for Vercel/production deployment).
-- However, `game-hues-cues` had `coverImage: '/src/assets/images/game_hues_cues_1794295237258.jpg'`, and the file only existed in `/src/assets/images/`.
-- In Vite, files inside `/src/assets/` referenced as plain string paths (without ES `import`) work in `vite dev`, but are **not** copied into `dist/` during `vite build`.
+แผนงานนี้จัดทำขึ้นเพื่อยกระดับระบบการสืบสวนของเกม **เบาะแสมรณะ (Dying Message)** จากเดิมที่มีการ์ด 32 ใบ เพิ่มขึ้นเป็น **100 ใบเต็มรูปแบบ** ตามผลการรีเสิร์ชกลไกเกมไขคดีและเกมละลายพฤติกรรม (Deception & Party Deduction) โดยมุ่งเน้นการเชื่อมโยงกับตัวจริงของผู้เล่นที่นั่งในวง อุปกรณ์รอบตัว อารมณ์ท่าทาง และอวตารในห้อง พร้อมจัดสถาปัตยกรรมระดับ Enterprise แยกไฟล์ตามหมวดหมู่ในโฟลเดอร์ `cards/` และเพิ่มคอมโพเนนต์ตรวจสอบคลังการ์ด
 
-## Proposed Changes
-1. **Static Asset Placement (`/public/images/` & `/public/src/assets/images/`)**:
-   - Copy `/src/assets/images/game_hues_cues_1794295237258.jpg` into `/public/images/game_hues_cues_1794295237258.jpg` (and `/public/src/assets/images/game_hues_cues_1794295237258.jpg` as a fallback) so Vite includes it in `dist/` on every production build.
-2. **Update Catalog Seed Path (`src/data/seedData.ts`)**:
-   - Update `coverImage` for `game-hues-cues` in `src/data/seedData.ts` from `'/src/assets/images/game_hues_cues_1794295237258.jpg'` to `'/images/game_hues_cues_1794295237258.jpg'`, matching all other catalog games.
+---
 
-## Verification Plan
-- Run `compile_applet` and `lint_applet` to verify the production build (`dist/images/game_hues_cues_1794295237258.jpg`) is generated cleanly.
+## 1. ผลการรีเสิร์ชและการออกแบบคลังการ์ด 100 ใบ (หมวดละ 25 ใบ)
+
+จากการศึกษาโครงสร้างเกมแนว Dying Message และ Deception: Murder in Hong Kong เพื่อให้เป็น **Party / Icebreaking Game** ที่มีประสิทธิภาพสูงสุด การ์ดเบาะแสทั้ง 100 ใบต้องมีความสมดุลระหว่าง "ชี้เป้าได้อย่างมีชั้นเชิง" และ "เปิดช่องให้ฆาตกรบลัฟฟ์หรือตบตาได้" โดยแบ่ง 4 หมวดหมู่เท่ากันอย่างเป็นระบบ:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                 DYING MESSAGE EVIDENCE DECK (100 CARDS)                     │
+├─────────────────────┬─────────────────────┬─────────────────────────────────┤
+│ 1. รูปลักษณ์ & กายภาพ │ 2. บุคลิก & ท่าทาง  │ 3. ข้าวของ & ไลฟ์สไตล์ รอบโต๊ะ  │
+│    (25 Cards)       │    (25 Cards)       │    (25 Cards)                   │
+├─────────────────────┴─────────────────────┴─────────────────────────────────┤
+│ 4. อวตาร & เอกลักษณ์ดิจิทัลในห้อง (25 Cards)                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### รายละเอียด 4 หมวดหมู่หลัก (หมวดละ 25 ใบ)
+1. **หมวดที่ 1: รูปลักษณ์และการแต่งกาย (Appearance & Outfit) — 25 ใบ** (`cards/appearanceCards.ts`)
+   - เสื้อผ้าโทนสี (ดำ/ขาว/พาสเทล/สดใส/เอิร์ธโทน), ลวดลายเสื้อ (ลายทาง/ลายสกรีน/สีพื้น), ความยาวแขนเสื้อ/กางเกง, แว่นตา (ทรงกลม/เหลี่ยม/ไม่ใส่), ทรงผม (ยาว/สั้น/ดัดลอน/มัดผม/หน้าม้า), สีผม, หนวดเครา, รองเท้า (ผ้าใบ/แตะ/หุ้มส้น), หมวก, สร้อย/ต่างหู, และเล็บ/แหวน
+2. **หมวดที่ 2: บุคลิก ท่าทาง และภาษากาย (Personality & Posture) — 25 ใบ** (`cards/personalityCards.ts`)
+   - ภาษากาย (กอดอก/เท้าคาง/เอนหลัง/นั่งหลังตรง), ปฏิกิริยา (กระพริบตาบ่อย/หลบตา/ยิ้มเก่ง/หน้านิ่ง/หัวเราะมีเสียง), ความช่างพูด (พูดเยอะ/พูดสั้นๆ/เป็นผู้ฟัง/ถามซักไซ้), การเคลื่อนไหว (ขยับมือประกอบ/นิ่งสนิท/หาว/จิบน้ำบ่อย), บุคลิกผู้นำหรือผู้สังเกตการณ์
+3. **หมวดที่ 3: ข้าวของเครื่องใช้และสิ่งแวดล้อมรอบโต๊ะ (Lifestyle & Belongings) — 25 ใบ** (`cards/lifestyleCards.ts`)
+   - เคสมือถือ (สีใส/สีเข้ม/มีลวดลาย), เครื่องดื่มข้างตัว (ชา/กาแฟ/น้ำเปล่า/แก้วเก็บความเย็น/ขวดพลาสติก), ตำแหน่งที่นั่ง (ซ้ายของเหยื่อ/ขวาของเหยื่อ/ตรงข้าม/ริมโต๊ะ), อุปกรณ์ไอที (สมาร์ตวอทช์/หูฟัง/แท็บเล็ต/สายชาร์จ), กระเป๋าพกพา (เป้/สะพายข้าง/ถุงผ้า), กุญแจ/บัตรพนักงาน
+4. **หมวดที่ 4: อวตารและตัวตนในเกม (Avatar & Digital Presence) — 25 ใบ** (`cards/avatarVibeCards.ts`)
+   - อวตาร (สายสัตว์/คนน่ารัก/การ์ตูน/ไอคอนกราฟิก), สีพื้นหลังอวตาร (พาสเทลชมพู/ฟ้า/เหลือง/เขียว), สไตล์ชื่อผู้เล่น (ภาษาไทย/ภาษาอังกฤษ/มีตัวเลข/มีอิโมจิ/สั้นกระชับ/ยาวตลก), ลำดับการกดเข้าห้อง (เข้าคนแรก/เข้าคนสุดท้าย/เข้าลำดับคู่/ลำดับคี่), สถานะความพร้อม (กด Ready ไว/กดช้าสุด)
+
+---
+
+## 2. สถาปัตยกรรมโฟลเดอร์และการแยกโมดูล (Enterprise-Grade Structure)
+
+เพื่อปฏิบัติตามกฎ **Strict Modularization (ห้ามไฟล์เกิน 800-1000 บรรทัด)** และรักษาความสะอาดของโค้ด เราจะจัดโครงสร้างไฟล์ดังนี้:
+
+```
+src/data/dyingmessage/
+├── types.ts                     # Type Definitions (DyingMessageEvidenceCard, Category, Roles)
+├── cards/
+│   ├── appearanceCards.ts       # 25 การ์ดรูปลักษณ์ & เครื่องแต่งกาย
+│   ├── personalityCards.ts      # 25 การ์ดบุคลิก & ภาษากาย
+│   ├── lifestyleCards.ts        # 25 การ์ดของใช้ & ไลฟ์สไตล์
+│   └── avatarVibeCards.ts       # 25 การ์ดอวตาร & ดิจิทัลในห้อง
+├── index.ts                     # รวม 100 การ์ด + ฟังก์ชัน Shuffle & Helper
+└── roles.ts                     # นิยาม 5 บทบาทพิเศษ (Killer, Accomplice, Detective, Doctor, Civilian)
+```
+
+- อัปเดต `src/data/dyingMessageCards.ts` ให้ทำหน้าที่ re-export จาก `src/data/dyingmessage/index.ts` เพื่อให้โค้ดส่วนอื่นๆ ของโปรเจกต์ (`dyingMessageService.ts`, `DyingMessageCentralBoard.tsx`, `DyingMessagePhases.tsx`, `DyingMessageLobby.tsx` ฯลฯ) ทำงานได้ต่อเนื่อง 100% โดยไม่มีการ Break API เดิม
+
+---
+
+## 3. คอมโพเนนต์ใหม่: Dying Message Evidence Deck Explorer
+
+สร้างคอมโพเนนต์ตรวจสอบคลังการ์ด `src/components/dyingmessage/DyingMessageDeckExplorerModal.tsx` ครอบด้วย `BaseModal.tsx` (Framer Motion + `createPortal`):
+- ให้ผู้เล่นและ Host สามารถเปิดดูการ์ดทั้ง 100 ใบได้จากหน้า Lobby หรือหน้าคู่มือกติกา
+- มีระบบ Filter ตาม 4 หมวดหมู่ พร้อมค้นหาชื่อการ์ด / คำใบ้ภาษาไทย
+- รองรับการแสดงผลแบบ Light Pastel พร้อมการเลื่อนแบบ Slim Scrollbar
+
+---
+
+## 4. แผนการตรวจสอบและทดสอบ (Verification Strategy)
+1. ตรวจสอบจำนวนการ์ดทั้ง 100 ใบว่าไม่มี ID ซ้ำกัน และมีการจัดสรรครบ 4 หมวดหมู่ หมวดละ 25 ใบ
+2. รัน `compile_applet` และ `lint_applet` เพื่อยืนยันว่าการ Import/Export และ Type Checking ผ่านฉลุย
+3. ยืนยันว่าการสุ่มการ์ด 5 ใบให้ผู้ตาย และ 5 ใบให้ฆาตกรใน `dyingMessageService.ts` ใช้งานคลัง 100 ใบได้อย่างลื่นไหล

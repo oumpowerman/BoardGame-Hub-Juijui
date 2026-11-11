@@ -17,6 +17,8 @@ import {
   Share2,
   AlertCircle,
   Clock,
+  Tablet,
+  Trophy,
 } from 'lucide-react';
 import { FirestoreRoom, FirestorePlayer } from '../../firebase/tableService';
 import { UserProfile } from '../../firebase/userService';
@@ -47,6 +49,8 @@ interface InPersonLobbyProps {
   onInviteFriend?: (friend: UserProfile) => void;
   onOpenFriendModal?: () => void;
   onOpenShareModal?: () => void;
+  onSwitchToIpadTable?: () => void;
+  onOpenScoreModal?: () => void;
 }
 
 const STEP_LIST = [
@@ -79,8 +83,11 @@ export const InPersonLobby: React.FC<InPersonLobbyProps> = ({
   onInviteFriend,
   onOpenFriendModal,
   onOpenShareModal,
+  onSwitchToIpadTable,
+  onOpenScoreModal,
 }) => {
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedIpadLink, setCopiedIpadLink] = useState(false);
   const myPlayer = players.find((p) => p.id === currentUid);
   const isHost = currentRoom?.hostId === currentUid;
 
@@ -89,6 +96,23 @@ export const InPersonLobby: React.FC<InPersonLobbyProps> = ({
     navigator.clipboard.writeText(currentRoom.roomCode);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const ipadBoardUrl =
+    currentRoom && typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}?game=cheese-thief&mode=board&room=${currentRoom.roomCode}`
+      : '';
+  const ipadQrImageUrl = ipadBoardUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+        ipadBoardUrl
+      )}`
+    : '';
+
+  const handleCopyIpadUrl = () => {
+    if (!ipadBoardUrl) return;
+    navigator.clipboard.writeText(ipadBoardUrl);
+    setCopiedIpadLink(true);
+    setTimeout(() => setCopiedIpadLink(false), 2000);
   };
 
   const getPlayerCountRuleDescription = (count: number) => {
@@ -297,6 +321,90 @@ export const InPersonLobby: React.FC<InPersonLobbyProps> = ({
               <span>+ ค้นหา / รับแอดเพื่อนเพิ่ม</span>
             </button>
           )}
+        </div>
+      </div>
+
+      {/* OPTIONAL IPAD CENTRAL CHEESE TABLE COMPANION CARD */}
+      <div className="p-4 sm:p-5 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white border-2 border-amber-400/60 rounded-3xl shadow-md">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+            {ipadQrImageUrl && (
+              <div className="p-2 bg-white rounded-2xl shadow-sm shrink-0">
+                <img
+                  src={ipadQrImageUrl}
+                  alt="QR Code สำหรับเชื่อม iPad โต๊ะชีสกลางวง"
+                  referrerPolicy="no-referrer"
+                  className="w-24 h-24 object-contain"
+                />
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400 text-amber-950 text-[11px] font-black">
+                  <Tablet className="w-3.5 h-3.5" />
+                  <span>โหมดเสริม: กระดานโต๊ะชีสบน iPad</span>
+                </span>
+                {currentRoom.ctIpadConnected ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 text-[11px] font-bold">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>เชื่อมต่อ iPad โต๊ะกลางแล้ว!</span>
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-amber-200/80 font-medium">
+                    เลือกเชื่อม iPad วางกลางวง หรือเล่นแค่มือถือล้วนก็ได้
+                  </span>
+                )}
+              </div>
+              <div className="text-sm sm:text-base font-black text-white">
+                วาง iPad กลางโต๊ะเพื่อแสดงก้อนชีส & อนิเมชันหนูขโมยชีสตามเวลาตื่นนอน!
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed max-w-xl">
+                ใช้กล้อง iPad สแกน QR Code นี้เพื่อเปลี่ยน iPad เป็นจานชีสกลางโต๊ะ (ไม่แย่งที่นั่งผู้เล่น) พอถึงเวลาลืมตาจะเห็นหนูขโมยกำลังย่องขโมยชีส และกดขโมยได้ทั้งบน iPad และมือถือ!
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:items-end gap-2 w-full sm:w-auto shrink-0">
+            {onSwitchToIpadTable && (
+              <button
+                type="button"
+                onClick={onSwitchToIpadTable}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-amber-950 text-xs font-black inline-flex items-center justify-center gap-1.5 shadow-sm cursor-pointer transition-all"
+              >
+                <Tablet className="w-4 h-4" />
+                <span>เปิดหน้าจอ iPad โต๊ะกลาง</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleCopyIpadUrl}
+              className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-amber-200 text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+            >
+              {copiedIpadLink ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-300">คัดลอกลิงก์ iPad แล้ว!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>คัดลอกลิงก์สำหรับ iPad</span>
+                </>
+              )}
+            </button>
+
+            {onOpenScoreModal && (currentRoom.ctRoundNumber || 0) > 0 && (
+              <button
+                type="button"
+                onClick={onOpenScoreModal}
+                className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <Trophy className="w-3.5 h-3.5" />
+                <span>ดูคะแนนสะสม ({currentRoom.ctRoundNumber} รอบ)</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

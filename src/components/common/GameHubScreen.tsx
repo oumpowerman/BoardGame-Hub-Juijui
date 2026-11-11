@@ -180,6 +180,26 @@ const HUB_THEMES: Record<
     friendRow: 'bg-pink-50/40 border-pink-200/70',
     addFriendBtn: 'bg-pink-600 hover:bg-pink-700 text-white font-bold',
   },
+  'dying-message': {
+    heroCard:
+      'bg-gradient-to-br from-sky-50 via-[#FFFDF9] to-rose-50 border-sky-200/90',
+    heroIconBg: 'bg-sky-500 text-white shadow-2xs',
+    badge: 'bg-sky-100/90 text-sky-950 border-sky-300/80',
+    primaryBtn: 'bg-rose-500 hover:bg-rose-600 text-white shadow-2xs',
+    dividerLine: 'bg-sky-200/70',
+    inputBorder: 'border-sky-300/90',
+    inputIcon: 'text-sky-600',
+    joinBtn: 'bg-sky-500 hover:bg-sky-600 text-white',
+    tableCardBorder: 'border-sky-200/80',
+    tableHeaderBorder: 'border-sky-100',
+    emptyBox: 'bg-sky-50/40 border-sky-200',
+    divideLine: 'divide-sky-100/80',
+    rowHover: 'hover:bg-sky-50/50',
+    roomCodeBadge: 'bg-sky-500 text-white font-black',
+    enterTableBtn: 'bg-sky-100 hover:bg-sky-200 text-sky-950 font-bold',
+    friendRow: 'bg-sky-50/40 border-sky-200/70',
+    addFriendBtn: 'bg-rose-500 hover:bg-rose-600 text-white font-bold',
+  },
 };
 
 export const GameHubScreen: React.FC<GameHubScreenProps> = ({

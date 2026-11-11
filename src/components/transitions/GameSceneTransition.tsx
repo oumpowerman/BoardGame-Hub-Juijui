@@ -21,7 +21,8 @@ export type TransitionGameVariant =
   | 'undercover'
   | 'detective-club'
   | 'avalon'
-  | 'hues-cues';
+  | 'hues-cues'
+  | 'dying-message';
 
 export type SceneTransitionMode =
   | 'enter'
@@ -170,6 +171,24 @@ const PASTEL_PALETTES: Record<TransitionGameVariant, PastelPalette> = {
     emoji: '🎨',
     gameNameTh: 'ทายสีจากคำใบ้ (Hues and Cues)',
     tagLabel: 'HUES AND CUES · COLOR CLUE PARTY',
+  },
+  'dying-message': {
+    backdrop: 'bg-gradient-to-br from-sky-100/95 via-[#FFFDF9]/95 to-rose-100/95',
+    cardBorder: 'border-sky-300',
+    cardShadow: 'shadow-sky-200/70',
+    emblemBg: 'bg-gradient-to-tr from-sky-300 via-amber-100 to-rose-200',
+    emblemBorder: 'border-sky-400',
+    badgeBg: 'bg-sky-100/90',
+    badgeBorder: 'border-sky-300',
+    badgeText: 'text-sky-950',
+    accentIconText: 'text-sky-700',
+    progressTrack: 'bg-sky-100/90 border-sky-200',
+    progressFill: 'bg-gradient-to-r from-sky-400 via-amber-400 to-rose-400',
+    buttonBg: 'bg-rose-500 hover:bg-rose-600',
+    buttonText: 'text-white font-black',
+    emoji: '🔎',
+    gameNameTh: 'เบาะแสมรณะ (Dying Message)',
+    tagLabel: 'DYING MESSAGE · TABLETOP EVIDENCE DEDUCTION',
   },
 };
 

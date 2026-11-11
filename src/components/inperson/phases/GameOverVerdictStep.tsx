@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Trophy } from 'lucide-react';
 import { FirestoreRoom, FirestorePlayer } from '../../../firebase/tableService';
 import { getCheeseThiefRoleDetails } from './phaseUtils';
 
@@ -10,6 +10,7 @@ interface GameOverVerdictStepProps {
   currentUid: string;
   isLoading: boolean;
   onPlayAgain: () => void;
+  onOpenScoreModal?: () => void;
 }
 
 export const GameOverVerdictStep: React.FC<GameOverVerdictStepProps> = ({
@@ -18,7 +19,12 @@ export const GameOverVerdictStep: React.FC<GameOverVerdictStepProps> = ({
   currentUid,
   isLoading,
   onPlayAgain,
+  onOpenScoreModal,
 }) => {
+  const scoresMap = currentRoom.ctScores || {};
+  const roundScoresMap = currentRoom.ctRoundScores || {};
+  const roundNum = currentRoom.ctRoundNumber || 1;
+
   return (
     <motion.div
       key="phase-game-over"
@@ -30,7 +36,7 @@ export const GameOverVerdictStep: React.FC<GameOverVerdictStepProps> = ({
     >
       <div className="space-y-2">
         <span className="px-3 py-1 bg-emerald-100 text-emerald-900 rounded-full text-xs font-bold inline-block">
-          STEP 6: เปิดการ์ดคนที่ถูกชี้มากที่สุด & ตัดสินผลผู้ชนะ
+          STEP 6 · รอบที่ {roundNum}: เปิดการ์ดคนที่ถูกชี้มากที่สุด & ตัดสินผลผู้ชนะ
         </span>
         <div className="text-5xl pt-1">
           {currentRoom.winnerTeam === 'fall_mouse'
@@ -41,7 +47,7 @@ export const GameOverVerdictStep: React.FC<GameOverVerdictStepProps> = ({
         </div>
         <h3 className="text-2xl font-black text-slate-900">
           {currentRoom.winnerTeam === 'fall_mouse'
-            ? 'Fall Mouse ถูกโหวตมากที่สุด — ชนะเดี่ยวทันที!'
+            ? 'Fall Mouse ถูกโหวตมากที่สุด — ชนะเดี่ยวทันที (+3 แต้ม)!'
             : currentRoom.winnerTeam === 'mice'
             ? 'เปิดโปงจอมโจรชีสสำเร็จ — ฝ่ายหนูขี้เซาชนะพร้อมกันทุกคน!'
             : 'จอมโจรชีสไม่ถูกเปิดโปง — จอมโจรชีสและลูกน้องชนะไปด้วยกัน!'}
@@ -55,10 +61,10 @@ export const GameOverVerdictStep: React.FC<GameOverVerdictStepProps> = ({
         </p>
       </div>
 
-      {/* Reveal All Roles & Dice Cups Around the Table */}
+      {/* Reveal All Roles, Dice Cups & Cumulative Points Around the Table */}
       <div className="p-4 sm:p-5 bg-white border border-amber-100 rounded-3xl shadow-xs space-y-3 text-left">
         <div className="text-xs font-bold text-slate-800 pb-2 border-b border-amber-100 flex items-center justify-between flex-wrap gap-2">
-          <span>เฉลยการ์ดตัวละครและเลขเต๋าใต้ถ้วยของทุกคน</span>
+          <span>เฉลยการ์ดตัวละคร · เลขเต๋าใต้ถ้วย · คะแนนที่ได้รับรอบนี้</span>
           <span className="font-mono text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-lg">
             ชีสถูกขโมยตอน ตี {currentRoom.stolenHour}:00 น.
           </span>
@@ -68,10 +74,12 @@ export const GameOverVerdictStep: React.FC<GameOverVerdictStepProps> = ({
           {players.map((p) => {
             const isAccused = currentRoom.accusedPlayerId === p.id;
             const roleInfo = getCheeseThiefRoleDetails(p.role, p.isFollower);
+            const roundPts = roundScoresMap[p.id] || 0;
+            const totalPts = scoresMap[p.id] || 0;
             return (
               <div
                 key={p.id}
-                className={`p-3 rounded-2xl border flex items-center justify-between text-xs sm:text-sm ${
+                className={`p-3 rounded-2xl border flex items-center justify-between gap-2 text-xs sm:text-sm ${
                   isAccused
                     ? 'bg-rose-50/70 border-rose-300'
                     : 'bg-amber-50/40 border-amber-200/60'
@@ -80,12 +88,17 @@ export const GameOverVerdictStep: React.FC<GameOverVerdictStepProps> = ({
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-9 h-9 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center font-bold text-amber-900 text-xs shrink-0 overflow-hidden shadow-2xs">
                     {p.avatarUrl ? (
-                      <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
+                      <img
+                        src={p.avatarUrl}
+                        alt={p.name}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       p.name.slice(0, 2).toUpperCase()
                     )}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
                       <span>
                         {p.name} {p.id === currentUid && '(คุณ)'}
@@ -93,6 +106,11 @@ export const GameOverVerdictStep: React.FC<GameOverVerdictStepProps> = ({
                       {isAccused && (
                         <span className="text-[10px] px-2 py-0.5 bg-rose-600 text-white rounded-full font-bold">
                           ถูกชี้โหวตมากที่สุด (เปิดการ์ด)
+                        </span>
+                      )}
+                      {roundPts > 0 && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 bg-emerald-600 text-white rounded-full font-extrabold">
+                          +{roundPts} แต้มรอบนี้
                         </span>
                       )}
                     </div>
@@ -104,6 +122,7 @@ export const GameOverVerdictStep: React.FC<GameOverVerdictStepProps> = ({
                       {p.peekedTargetName
                         ? ` · ส่องถ้วย ${p.peekedTargetName} (ตี ${p.peekedDiceValue})`
                         : ''}
+                      {` · คะแนนสะสมรวม: ${totalPts} แต้ม`}
                     </div>
                   </div>
                 </div>
@@ -118,17 +137,28 @@ export const GameOverVerdictStep: React.FC<GameOverVerdictStepProps> = ({
         </div>
       </div>
 
-      {/* Play Again Button */}
-      <div className="flex gap-3 pt-1">
+      {/* Play Again or End Game & View Table Scoreboard Buttons */}
+      <div className="flex flex-col sm:flex-row gap-3 pt-1">
         <button
           type="button"
           disabled={isLoading}
           onClick={onPlayAgain}
-          className="flex-1 py-3.5 px-4 font-bold text-sm bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-2xl shadow-xs transition-all hover:scale-[1.01] active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 min-h-[48px]"
+          className="flex-1 py-3.5 px-4 font-extrabold text-sm bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-2xl shadow-xs transition-all hover:scale-[1.01] active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 min-h-[48px]"
         >
           <RotateCcw className="w-4 h-4" />
-          <span>เล่นรอบใหม่ทันที (กลับสู่ล็อบบี้ตั้งโต๊ะ)</span>
+          <span>เล่นรอบใหม่ทันที (สะสมแต้มต่อ)</span>
         </button>
+
+        {onOpenScoreModal && (
+          <button
+            type="button"
+            onClick={onOpenScoreModal}
+            className="flex-1 py-3.5 px-4 font-extrabold text-sm bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl shadow-xs transition-all hover:scale-[1.01] active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 min-h-[48px]"
+          >
+            <Trophy className="w-4 h-4" />
+            <span>จบเกม & สรุปคะแนนโต๊ะนี้</span>
+          </button>
+        )}
       </div>
     </motion.div>
   );

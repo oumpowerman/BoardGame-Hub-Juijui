@@ -20,6 +20,7 @@ export type ActiveSection =
   | 'detective-club-screen'
   | 'avalon-screen'
   | 'hues-cues-screen'
+  | 'dying-message-screen'
   | 'sub-forums'
   | 'leaderboard'
   | 'architecture';
@@ -33,6 +34,7 @@ interface NavbarProps {
   onEnterDetectiveClubScreen?: () => void;
   onEnterAvalonScreen?: () => void;
   onEnterHuesCuesScreen?: () => void;
+  onEnterDyingMessageScreen?: () => void;
   onOpenFriendModal: () => void;
   onSignOut: () => void;
   currentUser: UserProfile;
@@ -44,6 +46,7 @@ interface NavbarProps {
   liveDetectiveClubRoomsCount?: number;
   liveAvalonRoomsCount?: number;
   liveHuesCuesRoomsCount?: number;
+  liveDyingMessageRoomsCount?: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -55,6 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onEnterDetectiveClubScreen,
   onEnterAvalonScreen,
   onEnterHuesCuesScreen,
+  onEnterDyingMessageScreen,
   onOpenFriendModal,
   onSignOut,
   currentUser,
@@ -66,6 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   liveDetectiveClubRoomsCount = 0,
   liveAvalonRoomsCount = 0,
   liveHuesCuesRoomsCount = 0,
+  liveDyingMessageRoomsCount = 0,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -76,7 +81,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     liveUndercoverRoomsCount +
     liveDetectiveClubRoomsCount +
     liveAvalonRoomsCount +
-    liveHuesCuesRoomsCount;
+    liveHuesCuesRoomsCount +
+    liveDyingMessageRoomsCount;
 
   const isCurrentGameActive =
     activeSection === 'cheese-thief-screen' ||
@@ -84,7 +90,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     activeSection === 'undercover-screen' ||
     activeSection === 'detective-club-screen' ||
     activeSection === 'avalon-screen' ||
-    activeSection === 'hues-cues-screen';
+    activeSection === 'hues-cues-screen' ||
+    activeSection === 'dying-message-screen';
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -108,7 +115,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, [isDropdownOpen]);
 
   const handleSelectGame = (
-    type: 'cheese-thief' | 'insider' | 'undercover' | 'detective-club' | 'avalon' | 'hues-cues'
+    type:
+      | 'cheese-thief'
+      | 'insider'
+      | 'undercover'
+      | 'detective-club'
+      | 'avalon'
+      | 'hues-cues'
+      | 'dying-message'
   ) => {
     setIsDropdownOpen(false);
     if (type === 'cheese-thief') {
@@ -123,6 +137,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       onEnterAvalonScreen();
     } else if (type === 'hues-cues' && onEnterHuesCuesScreen) {
       onEnterHuesCuesScreen();
+    } else if (type === 'dying-message' && onEnterDyingMessageScreen) {
+      onEnterDyingMessageScreen();
     }
   };
 
@@ -383,6 +399,33 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                     <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-pink-100 text-pink-900 border border-pink-200 shrink-0">
                       {liveHuesCuesRoomsCount || 0} ห้อง
+                    </span>
+                  </button>
+
+                  {/* Game 7: Dying Message */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectGame('dying-message')}
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-sky-50/80 transition-colors flex items-center justify-between gap-3 group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="w-9 h-9 rounded-xl bg-sky-500 text-white flex items-center justify-center font-bold text-base shadow-2xs shrink-0 group-hover:scale-105 transition-transform">
+                        🔎
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-xs font-extrabold text-slate-900 truncate flex items-center gap-1.5">
+                          <span>เบาะแสมรณะ (Dying Message)</span>
+                          <span className="text-[10px] text-sky-700 font-mono font-bold">
+                            (4–12 คน)
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate">
+                          เชื่อม iPad กลางโต๊ะ · ทิ้งเบาะแสตัวจริง & อวตาร
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-sky-100 text-sky-900 border border-sky-200 shrink-0">
+                      {liveDyingMessageRoomsCount || 0} ห้อง
                     </span>
                   </button>
                 </motion.div>
@@ -667,6 +710,27 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
                 <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-lg bg-pink-500 text-white">
                   {liveHuesCuesRoomsCount || 0} ห้อง
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectGame('dying-message')}
+                className="w-full text-left p-3 rounded-2xl bg-sky-50/60 border border-sky-200/80 flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🔎</span>
+                  <div>
+                    <div className="text-xs font-black text-slate-900">
+                      เบาะแสมรณะ (Dying Message)
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      4–12 คน · เชื่อม iPad กลางโต๊ะ & สืบตัวจริง
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-lg bg-sky-500 text-white">
+                  {liveDyingMessageRoomsCount || 0} ห้อง
                 </span>
               </button>
             </motion.div>

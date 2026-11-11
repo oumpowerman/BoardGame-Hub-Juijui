@@ -59,10 +59,17 @@ export async function leaveOrCloseTableRoom(
   }
 }
 
-// 1. Create a Table Room (Supports 4-8 players across Cheese Thief, Insider, Detective Club, Hues & Cues, etc.)
+// 1. Create a Table Room (Supports 4-10 players across Cheese Thief, Insider, Detective Club, Hues & Cues, Dying Message, etc.)
 export async function createTableRoom(
   hostName: string,
-  gameId: 'cheese-thief' | 'insider' | 'undercover' | 'detective-club' | 'avalon' | 'hues-cues' = 'cheese-thief',
+  gameId:
+    | 'cheese-thief'
+    | 'insider'
+    | 'undercover'
+    | 'detective-club'
+    | 'avalon'
+    | 'hues-cues'
+    | 'dying-message' = 'cheese-thief',
   customRoomName?: string,
   maxPlayers: number = 8
 ): Promise<FirestoreRoom> {
@@ -75,10 +82,12 @@ export async function createTableRoom(
   const roomId = `room_${Date.now()}_${roomCode}`;
   const roomPath = `rooms/${roomId}`;
   const cleanHost = hostName.trim() || 'โฮสต์โต๊ะ';
-  const clampedMax = Math.min(10, Math.max(3, maxPlayers));
+  const clampedMax = Math.min(12, Math.max(3, maxPlayers));
 
   const defaultName =
-    gameId === 'hues-cues'
+    gameId === 'dying-message'
+      ? `โต๊ะเบาะแสมรณะ (Dying Message) ของ ${cleanHost}`
+      : gameId === 'hues-cues'
       ? `โต๊ะทายสีจากคำใบ้ (Hues & Cues) ของ ${cleanHost}`
       : gameId === 'avalon'
       ? `โต๊ะศึกอัศวินโต๊ะกลม (Avalon) ของ ${cleanHost}`
@@ -102,11 +111,28 @@ export async function createTableRoom(
     cheeseStolen: false,
     enableFallMouse: false,
     followerIds: [],
+    ctIpadConnected: false,
+    ctRoundNumber: 0,
+    ctScores: { [user.uid]: 0 },
+    ctRoundScores: {},
+    ctWinsCount: { [user.uid]: 0 },
+    ctThiefCount: { [user.uid]: 0 },
+    ctSessionSummaryOpen: false,
     hcIpadConnected: false,
     hcRoundNumber: 0,
     hcGuesses: {},
     hcScores: { [user.uid]: 0 },
     hcRoundScores: {},
+    dmIpadConnected: false,
+    dmRoundNumber: 1,
+    dmCategory: 'all',
+    dmEnableDetective: true,
+    dmEnableDoctor: true,
+    dmEnableAccomplice: true,
+    dmDebateDurationSeconds: 180,
+    dmEvidenceRounds: [],
+    dmDoctorSkillUsed: false,
+    dmScores: { [user.uid]: 0 },
     wordCategory: 'all',
     wordCategoryLabel: 'สุ่มทุกหมวดหมู่',
     secretWord: '',

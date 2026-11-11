@@ -37,6 +37,7 @@ export interface InPersonPhasesProps {
   onSelectVoteTarget: (targetId: string) => void;
   onCastVote: () => void;
   onPlayAgain: () => void;
+  onOpenScoreModal?: () => void;
 }
 
 export const InPersonPhases: React.FC<InPersonPhasesProps> = ({
@@ -67,6 +68,7 @@ export const InPersonPhases: React.FC<InPersonPhasesProps> = ({
   onSelectVoteTarget,
   onCastVote,
   onPlayAgain,
+  onOpenScoreModal,
 }) => {
   const [selectedFollowerTargets, setSelectedFollowerTargets] = useState<
     string[]
@@ -248,6 +250,7 @@ export const InPersonPhases: React.FC<InPersonPhasesProps> = ({
             currentUid={currentUid}
             isLoading={isLoading}
             onPlayAgain={onPlayAgain}
+            onOpenScoreModal={onOpenScoreModal}
           />
         )}
       </AnimatePresence>
