@@ -1,5 +1,5 @@
-import React from 'react';
-import { motion } from 'motion/react';
+import React, { useState, useEffect, useRef } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   Tablet,
   Smartphone,
@@ -14,6 +14,16 @@ import {
   Gavel,
   ArrowRight,
   Skull,
+  Maximize2,
+  Minimize2,
+  Check,
+  X,
+  ZoomIn,
+  Search,
+  Tag,
+  ChevronLeft,
+  ChevronRight,
+  HelpCircle,
 } from 'lucide-react';
 import {
   FirestoreRoom,
@@ -23,6 +33,7 @@ import {
   getDyingMessageCardById,
   DYING_MESSAGE_ROLES,
 } from '../../data/dyingMessageCards';
+import { tableAudio } from '../../utils/tableAudio';
 
 interface DyingMessageCentralBoardProps {
   room: FirestoreRoom;
@@ -59,12 +70,67 @@ export const DyingMessageCentralBoard: React.FC<
   onContinueNextNight,
   onPlayAgain,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [inspectedCardId, setInspectedCardId] = useState<string | null>(null);
+  const [inspectedRoundNumber, setInspectedRoundNumber] = useState<number>(1);
+  const [cardTags, setCardTags] = useState<
+    Record<string, 'likely_real' | 'likely_fake' | null>
+  >({});
+
   const roundNumber = room.dmRoundNumber || 1;
   const evidenceRounds = room.dmEvidenceRounds || [];
   const isGameOver = room.status === 'dm_game_over';
   const isVoting = room.status === 'dm_voting';
   const isRoundVerdict = room.status === 'dm_round_verdict';
   const isDayDiscussion = room.status === 'dm_day_discussion';
+
+  // Listen to browser fullscreen change event
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const handleToggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        const el = containerRef.current || document.documentElement;
+        if (el.requestFullscreen) {
+          await el.requestFullscreen();
+        } else if ((el as unknown as { webkitRequestFullscreen?: () => void }).webkitRequestFullscreen) {
+          (el as unknown as { webkitRequestFullscreen: () => void }).webkitRequestFullscreen();
+        }
+        setIsFullscreen(true);
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as unknown as { webkitExitFullscreen?: () => void }).webkitExitFullscreen) {
+          (document as unknown as { webkitExitFullscreen: () => void }).webkitExitFullscreen();
+        }
+        setIsFullscreen(false);
+      }
+    } catch (err) {
+      console.error('Fullscreen toggle failed:', err);
+    }
+  };
+
+  const handleTagCard = (
+    cardId: string,
+    tag: 'likely_real' | 'likely_fake' | null,
+    e?: React.MouseEvent
+  ) => {
+    e?.stopPropagation();
+    tableAudio.playCardFlip();
+    setCardTags((prev) => ({
+      ...prev,
+      [cardId]: prev[cardId] === tag ? null : tag,
+    }));
+  };
 
   const formatTime = (sec: number) => {
     const m = Math.floor(sec / 60);
@@ -81,7 +147,14 @@ export const DyingMessageCentralBoard: React.FC<
   }
 
   return (
-    <div className="w-full rounded-3xl bg-gradient-to-b from-sky-50 via-[#FFFDF9] to-rose-50/70 text-slate-900 border-2 border-sky-300 shadow-xl overflow-hidden p-4 sm:p-7 space-y-6">
+    <div
+      ref={containerRef}
+      className={`w-full transition-all text-slate-900 overflow-hidden ${
+        isFullscreen
+          ? 'fixed inset-0 z-50 w-screen h-screen overflow-y-auto bg-gradient-to-b from-sky-50 via-[#FFFDF9] to-rose-50/80 p-4 sm:p-8 space-y-6'
+          : 'rounded-3xl bg-gradient-to-b from-sky-50 via-[#FFFDF9] to-rose-50/70 border-2 border-sky-300 shadow-xl p-4 sm:p-7 space-y-6'
+      }`}
+    >
       {/* 1. Top iPad Tabletop Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-sky-200/80">
         <div className="flex items-center gap-3">
@@ -107,6 +180,29 @@ export const DyingMessageCentralBoard: React.FC<
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Fullscreen Toggle Button */}
+          <button
+            type="button"
+            onClick={handleToggleFullscreen}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-colors ${
+              isFullscreen
+                ? 'bg-sky-600 text-white border-sky-700 shadow-sm'
+                : 'bg-white hover:bg-sky-50 border-sky-200 text-sky-900 shadow-2xs'
+            }`}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize2 className="w-4 h-4" />
+                <span>ย่อจอปกติ</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-4 h-4 text-sky-600" />
+                <span>ขยายเต็มจอ iPad</span>
+              </>
+            )}
+          </button>
+
           <button
             type="button"
             onClick={onOpenShareModal}
@@ -317,7 +413,7 @@ export const DyingMessageCentralBoard: React.FC<
                     )}
                   </div>
 
-                  {/* 3 Large Tabletop Evidence Cards */}
+                  {/* 3 Large Tabletop Evidence Cards (Interactive with Tap to Inspect & Deduction Tags) */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {evRound.cardIds.map((cardId, idx) => {
                       const card = getDyingMessageCardById(cardId);
@@ -325,6 +421,7 @@ export const DyingMessageCentralBoard: React.FC<
                         evRound.eliminatedFakeCardId === cardId;
                       const isRealTruthRevealed =
                         isGameOver && evRound.realCardId === cardId;
+                      const currentTag = cardTags[cardId];
 
                       if (!card) return null;
 
@@ -333,27 +430,56 @@ export const DyingMessageCentralBoard: React.FC<
                           key={cardId}
                           initial={{ opacity: 0, y: 12, scale: 0.96 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
+                          whileHover={{ scale: 1.025, y: -2 }}
+                          whileTap={{ scale: 0.98 }}
                           transition={{ duration: 0.22, delay: idx * 0.08 }}
-                          className={`relative rounded-3xl p-5 border-2 transition-all flex flex-col justify-between min-h-[170px] ${
+                          onClick={() => {
+                            setInspectedCardId(cardId);
+                            setInspectedRoundNumber(evRound.roundNumber);
+                            tableAudio.playCardFlip();
+                          }}
+                          className={`relative rounded-3xl p-5 border-2 transition-all flex flex-col justify-between min-h-[200px] cursor-pointer group select-none ${
                             isEliminatedFake
                               ? 'bg-slate-100 border-slate-300 opacity-60'
                               : isRealTruthRevealed
                               ? 'bg-amber-50 border-amber-400 ring-4 ring-amber-300/60 shadow-md'
-                              : `${card.pastelBg} ${card.pastelBorder} shadow-xs`
+                              : currentTag === 'likely_real'
+                              ? 'bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-300/70 shadow-sm'
+                              : currentTag === 'likely_fake'
+                              ? 'bg-rose-50/70 border-rose-300 opacity-75 shadow-2xs'
+                              : `${card.pastelBg} ${card.pastelBorder} shadow-xs hover:shadow-md`
                           }`}
                         >
                           <div className="flex items-start justify-between gap-3">
-                            <span className="text-4xl sm:text-5xl select-none">
+                            <span className="text-4xl sm:text-5xl select-none group-hover:scale-110 transition-transform">
                               {card.emoji}
                             </span>
-                            <span className="text-xs font-mono font-bold text-slate-500">
-                              หลักฐานชิ้นที่ #{idx + 1} · {card.categoryLabel}
-                            </span>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="text-[11px] font-mono font-bold text-slate-500">
+                                #{idx + 1} · {card.categoryLabel}
+                              </span>
+                              {currentTag === 'likely_real' && (
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-500 text-white font-extrabold text-[10px] shadow-xs flex items-center gap-0.5 animate-bounce">
+                                  <Check className="w-2.5 h-2.5" />
+                                  <span>น่าจะจริง!</span>
+                                </span>
+                              )}
+                              {currentTag === 'likely_fake' && (
+                                <span className="px-2 py-0.5 rounded-md bg-rose-600 text-white font-extrabold text-[10px] shadow-xs flex items-center gap-0.5">
+                                  <X className="w-2.5 h-2.5" />
+                                  <span>น่าจะปลอม!</span>
+                                </span>
+                              )}
+                            </div>
                           </div>
 
-                          <div className="space-y-1.5 mt-3">
+                          <div className="space-y-1.5 mt-2">
                             <h4
-                              className={`text-lg sm:text-xl font-black ${card.pastelText}`}
+                              className={`text-lg sm:text-xl font-black ${
+                                currentTag === 'likely_fake'
+                                  ? 'text-slate-500 line-through'
+                                  : card.pastelText
+                              }`}
                             >
                               {card.titleTh}
                             </h4>
@@ -364,16 +490,65 @@ export const DyingMessageCentralBoard: React.FC<
 
                           {/* Stamp when Forensic Doctor eliminates this fake card */}
                           {isEliminatedFake && (
-                            <div className="mt-3 px-3 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-extrabold text-center shadow-xs">
+                            <div className="mt-2.5 px-3 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-extrabold text-center shadow-xs">
                               ✗ หมอชันสูตรยืนยัน: ใบนี้คือหลักฐานปลอม!
                             </div>
                           )}
 
                           {/* Game Over Truth Badge */}
                           {isRealTruthRevealed && (
-                            <div className="mt-3 px-3 py-1.5 rounded-xl bg-amber-400 text-amber-950 text-xs font-black text-center shadow-xs flex items-center justify-center gap-1.5">
+                            <div className="mt-2.5 px-3 py-1.5 rounded-xl bg-amber-400 text-amber-950 text-xs font-black text-center shadow-xs flex items-center justify-center gap-1.5">
                               <Sparkles className="w-4 h-4" />
                               <span>เบาะแสจริงที่ผู้ตายเลือก!</span>
+                            </div>
+                          )}
+
+                          {/* Tabletop Interactive Deduction Buttons */}
+                          {!isEliminatedFake && !isGameOver && (
+                            <div className="flex items-center gap-1.5 pt-2 border-t border-slate-200/60 mt-3">
+                              <button
+                                type="button"
+                                onClick={(e) =>
+                                  handleTagCard(cardId, 'likely_real', e)
+                                }
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
+                                  currentTag === 'likely_real'
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900'
+                                }`}
+                                title="ปักป้ายว่าการ์ดใบนี้น่าจะจริง"
+                              >
+                                <Check className="w-3 h-3" />
+                                <span>จริง</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) =>
+                                  handleTagCard(cardId, 'likely_fake', e)
+                                }
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
+                                  currentTag === 'likely_fake'
+                                    ? 'bg-rose-600 text-white shadow-xs'
+                                    : 'bg-rose-100 hover:bg-rose-200 text-rose-900'
+                                }`}
+                                title="ปักป้ายว่าการ์ดใบนี้น่าจะปลอม"
+                              >
+                                <X className="w-3 h-3" />
+                                <span>ปลอม</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setInspectedCardId(cardId);
+                                  setInspectedRoundNumber(evRound.roundNumber);
+                                  tableAudio.playCardFlip();
+                                }}
+                                className="ml-auto px-2.5 py-1 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-800 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                                title="แตะส่องแว่นขยายดูหลักฐานแบบละเอียด"
+                              >
+                                <ZoomIn className="w-3.5 h-3.5 text-sky-600" />
+                                <span>ส่อง</span>
+                              </button>
                             </div>
                           )}
                         </motion.div>
@@ -483,6 +658,171 @@ export const DyingMessageCentralBoard: React.FC<
           })}
         </div>
       </div>
+
+      {/* 5. Interactive Evidence Magnifying Glass Spotlight Modal (Pop-up on iPad) */}
+      <AnimatePresence>
+        {inspectedCardId && (() => {
+          const inspectedCard = getDyingMessageCardById(inspectedCardId);
+          if (!inspectedCard) return null;
+          const currentRoundEvidence = evidenceRounds.find(
+            (r) => r.roundNumber === inspectedRoundNumber
+          );
+          const currentRoundCardIds = currentRoundEvidence?.cardIds || [];
+          const currentCardIndex = currentRoundCardIds.indexOf(inspectedCardId);
+          const currentTag = cardTags[inspectedCardId];
+
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setInspectedCardId(null)}
+              className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className={`max-w-xl w-full rounded-3xl p-6 sm:p-8 border-4 shadow-2xl relative flex flex-col justify-between gap-5 bg-white ${inspectedCard.pastelBorder}`}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-sky-500 text-white flex items-center justify-center shadow-xs">
+                      <Search className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-mono font-bold text-sky-700 uppercase">
+                        แว่นขยายส่องหลักฐาน · คืนที่ {inspectedRoundNumber} (ชิ้นที่ {currentCardIndex + 1}/{currentRoundCardIds.length})
+                      </span>
+                      <h3 className="text-base sm:text-lg font-black text-slate-900">
+                        หมวดหมู่: {inspectedCard.categoryLabel}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setInspectedCardId(null)}
+                    className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Card Center Visual */}
+                <div
+                  className={`p-6 sm:p-7 rounded-3xl border-2 text-center space-y-4 shadow-inner relative overflow-hidden ${inspectedCard.pastelBg} ${inspectedCard.pastelBorder}`}
+                >
+                  {/* Subtle Background Spotlight Glow */}
+                  <div className="absolute inset-0 bg-radial from-white/70 via-transparent to-transparent pointer-events-none" />
+
+                  <div className="text-7xl sm:text-8xl select-none filter drop-shadow-md animate-pulse">
+                    {inspectedCard.emoji}
+                  </div>
+                  <div className="space-y-1.5 relative z-10">
+                    <h4
+                      className={`text-2xl sm:text-3xl font-black ${
+                        currentTag === 'likely_fake'
+                          ? 'text-slate-400 line-through'
+                          : inspectedCard.pastelText
+                      }`}
+                    >
+                      {inspectedCard.titleTh}
+                    </h4>
+                    <p className="text-sm sm:text-base text-slate-700 font-semibold max-w-md mx-auto leading-relaxed">
+                      {inspectedCard.subtitleTh}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Detective Deduction Tip Box */}
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-1">
+                  <div className="font-extrabold flex items-center gap-1.5 text-amber-900">
+                    <Sparkles className="w-4 h-4 text-amber-600" />
+                    <span>วิธีวิเคราะห์เบาะแสมรณะนี้:</span>
+                  </div>
+                  <p className="leading-relaxed">
+                    สังเกตผู้ต้องสงสัยที่ยังมีชีวิตอยู่ว่าใครมีลักษณะสอดคล้องกับ &ldquo;{inspectedCard.titleTh}&rdquo; (เช่น สีเสื้อ, เครื่องประดับ, ทรงผม, แว่นตา, หรือรูปโปรไฟล์) โดยผู้ตายเลือกชี้ใบนี้ก่อนหมดสติ!
+                  </p>
+                </div>
+
+                {/* Card Navigation & Tagging Controls */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+                  {/* Previous / Next Card in this round */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={currentCardIndex <= 0}
+                      onClick={() => {
+                        if (currentCardIndex > 0) {
+                          setInspectedCardId(currentRoundCardIds[currentCardIndex - 1]);
+                          tableAudio.playCardFlip();
+                        }
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span>ใบก่อน</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={currentCardIndex >= currentRoundCardIds.length - 1}
+                      onClick={() => {
+                        if (currentCardIndex < currentRoundCardIds.length - 1) {
+                          setInspectedCardId(currentRoundCardIds[currentCardIndex + 1]);
+                          tableAudio.playCardFlip();
+                        }
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>ใบถัดไป</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Tagging Buttons */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => handleTagCard(inspectedCard.id, 'likely_real', e)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer transition-all flex items-center gap-1.5 ${
+                        currentTag === 'likely_real'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900'
+                      }`}
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>น่าจะจริง!</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleTagCard(inspectedCard.id, 'likely_fake', e)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer transition-all flex items-center gap-1.5 ${
+                        currentTag === 'likely_fake'
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'bg-rose-100 hover:bg-rose-200 text-rose-900'
+                      }`}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>น่าจะปลอม!</span>
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setInspectedCardId(null)}
+                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs cursor-pointer shadow-xs"
+                  >
+                    ปิดแว่นขยาย
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 };
