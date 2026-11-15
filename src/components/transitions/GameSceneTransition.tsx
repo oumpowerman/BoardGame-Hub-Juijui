@@ -22,7 +22,8 @@ export type TransitionGameVariant =
   | 'detective-club'
   | 'avalon'
   | 'hues-cues'
-  | 'dying-message';
+  | 'dying-message'
+  | 'doraemon';
 
 export type SceneTransitionMode =
   | 'enter'
@@ -189,6 +190,24 @@ const PASTEL_PALETTES: Record<TransitionGameVariant, PastelPalette> = {
     emoji: '🔎',
     gameNameTh: 'เบาะแสมรณะ (Dying Message)',
     tagLabel: 'DYING MESSAGE · TABLETOP EVIDENCE DEDUCTION',
+  },
+  doraemon: {
+    backdrop: 'bg-gradient-to-br from-amber-100/95 via-[#FFFDF7]/95 to-rose-100/95',
+    cardBorder: 'border-amber-400',
+    cardShadow: 'shadow-amber-200/70',
+    emblemBg: 'bg-gradient-to-tr from-amber-300 via-rose-200 to-yellow-100',
+    emblemBorder: 'border-amber-500',
+    badgeBg: 'bg-amber-100/90',
+    badgeBorder: 'border-amber-300',
+    badgeText: 'text-amber-950',
+    accentIconText: 'text-amber-700',
+    progressTrack: 'bg-amber-100/90 border-amber-300',
+    progressFill: 'bg-gradient-to-r from-amber-400 via-rose-400 to-amber-500',
+    buttonBg: 'bg-amber-500 hover:bg-amber-600',
+    buttonText: 'text-white font-black',
+    emoji: '👑',
+    gameNameTh: 'ไพ่โดเรม่อน (King\'s Cup)',
+    tagLabel: 'DORAEMON · THAI PARTY CARD GAME',
   },
 };
 

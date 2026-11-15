@@ -14,6 +14,7 @@ import {
   arrayUnion,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './config';
+import { recordFriendPlayedWith } from '../utils/friendSortUtils';
 
 export interface UserProfile {
   uid: string;
@@ -308,6 +309,7 @@ export async function sendRoomInviteToFriend(
       toUid,
       createdAt: new Date().toISOString(),
     });
+    recordFriendPlayedWith(toUid);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -469,6 +471,7 @@ export async function addInstantFriendFromRoomSeat(
       friends: arrayUnion(seatPlayer.id),
       updatedAt: now,
     });
+    recordFriendPlayedWith(seatPlayer.id);
 
     return targetProfile;
   } catch (error) {

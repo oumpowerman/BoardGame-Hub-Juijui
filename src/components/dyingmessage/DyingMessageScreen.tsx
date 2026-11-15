@@ -495,6 +495,9 @@ export const DyingMessageScreen: React.FC<DyingMessageScreenProps> = ({
             debateSecondsLeft={debateSecondsLeft}
             isLoading={isLoading}
             onAcknowledgeRole={() => acknowledgeDyingMessageRole(activeRoom.id)}
+            onForceAcknowledgeRoles={() =>
+              forceAcknowledgeAllDyingMessageRoles(activeRoom.id)
+            }
             onSelectVictim={(victimId) =>
               selectDyingMessageVictim(activeRoom.id, victimId)
             }

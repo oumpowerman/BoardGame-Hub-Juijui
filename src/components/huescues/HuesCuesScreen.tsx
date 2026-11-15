@@ -46,6 +46,10 @@ import { useRoomTransition } from '../../hooks/useRoomTransition';
 import { HuesCuesCentralBoard } from './HuesCuesCentralBoard';
 import { HuesCuesPlayerControls } from './HuesCuesPlayerControls';
 import {
+  CompactHubFriendsCard,
+  CompactLobbyFriendPullBar,
+} from '../friends/CompactFriendsSection';
+import {
   saveActiveRoomSession,
   clearActiveRoomSession,
   getActiveRoomSession,
@@ -534,6 +538,16 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
               </div>
             </div>
           )}
+
+          {onOpenFriendModal && (
+            <CompactHubFriendsCard
+              friends={friends}
+              onOpenFriendModal={onOpenFriendModal}
+              accent="amber"
+              addFriendBtnClass="bg-amber-500 hover:bg-amber-600 text-white"
+              friendRowClass="bg-amber-50/40 border-amber-200/80"
+            />
+          )}
         </div>
       </div>
     );
@@ -766,39 +780,21 @@ export const HuesCuesScreen: React.FC<HuesCuesScreenProps> = ({
                 </div>
               </div>
 
-              {/* Pull Friends Directly */}
-              {friends.length > 0 && (
-                <div className="space-y-1.5">
-                  <span className="text-xs font-bold text-slate-600 block">
-                    ดึงเพื่อนเข้าโต๊ะทันที:
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {friends.map((f) => {
-                      const seated = players.some((p) => p.id === f.uid);
-                      return (
-                        <button
-                          key={f.uid}
-                          type="button"
-                          disabled={seated}
-                          onClick={async () => {
-                            await addFriendToRoomSeat(room.id, f);
-                            if (onInviteFriendToRoom) {
-                              onInviteFriendToRoom(room, f);
-                            }
-                          }}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors ${
-                            seated
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default'
-                              : 'bg-white hover:bg-amber-50 text-slate-800 border-amber-200 cursor-pointer'
-                          }`}
-                        >
-                          {f.accountName} {seated ? '✓' : '+ ดึงเข้าโต๊ะ'}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {/* Pull Friends Directly (Top 5 Recent & Frequent + Modal) */}
+              <CompactLobbyFriendPullBar
+                friends={friends}
+                seatedPlayerIds={players.map((p) => p.id)}
+                maxPlayersReached={players.length >= 10}
+                onPullFriend={async (f) => {
+                  await addFriendToRoomSeat(room.id, f);
+                  if (onInviteFriendToRoom) {
+                    onInviteFriendToRoom(room, f);
+                  }
+                }}
+                onOpenFriendModal={onOpenFriendModal}
+                accent="amber"
+                title={`ดึงเพื่อนเข้าโต๊ะทันที (${friends.length} คน)`}
+              />
 
               {/* Seated Players List */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">

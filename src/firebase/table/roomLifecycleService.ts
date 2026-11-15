@@ -26,6 +26,7 @@ import {
   generate4DigitCode,
   syncRoomPlayerCount,
 } from './roomHelpers';
+import { recordFriendPlayedWith } from '../../utils/friendSortUtils';
 
 // 0. Clean up any existing rooms hosted by this user (Enforce 1 Room per Host)
 export async function cleanupHostPreviousRooms(
@@ -349,6 +350,7 @@ export async function addFriendToRoomSeat(
       friendPlayer
     );
     await syncRoomPlayerCount(roomId);
+    recordFriendPlayedWith(friend.uid);
     return friendPlayer;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, playerPath);

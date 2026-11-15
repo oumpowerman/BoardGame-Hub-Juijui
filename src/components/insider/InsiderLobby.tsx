@@ -23,6 +23,7 @@ import {
   SameRoomQuickFriendBar,
   SeatQuickAddFriendButton,
 } from '../friends/SameRoomQuickFriendBar';
+import { CompactLobbyFriendPullBar } from '../friends/CompactFriendsSection';
 
 interface InsiderLobbyProps {
   activeRoom: FirestoreRoom;
@@ -96,70 +97,16 @@ export const InsiderLobby: React.FC<InsiderLobbyProps> = ({
         </div>
       </div>
 
-      {/* Invite Accepted Friends Strip inside Lobby */}
-      <div className="p-4 bg-rose-50/60 border border-rose-200/80 rounded-2xl space-y-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-bold text-rose-950 flex items-center gap-1.5">
-            <Users className="w-4 h-4 text-rose-600" />
-            <span>
-              ดึงเพื่อนที่แอดแล้วเข้าห้องนี้ ({friends.length} คนในรายชื่อเพื่อน)
-            </span>
-          </span>
-          <button
-            type="button"
-            onClick={onOpenFriendModal}
-            className="text-xs font-bold text-rose-700 hover:underline cursor-pointer"
-          >
-            จัดการรายชื่อเพื่อน →
-          </button>
-        </div>
-
-        {friends.length === 0 ? (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white/90 rounded-xl border border-rose-200/60 text-xs text-slate-600">
-            <span>
-              แอดเพื่อนด้วยชื่อ Account หรือรหัสเพื่อนเพื่อดึงมานั่งโต๊ะเดียวกันได้ทันที
-            </span>
-            <button
-              type="button"
-              onClick={onOpenFriendModal}
-              className="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-lg cursor-pointer shrink-0"
-            >
-              + ไปหน้าเพิ่มเพื่อน
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {friends.map((friend) => {
-              const alreadySeated = players.some((p) => p.id === friend.uid);
-              return (
-                <div
-                  key={friend.uid}
-                  className="px-3 py-2 bg-white border border-rose-200 rounded-xl flex items-center gap-2.5 shadow-2xs"
-                >
-                  <span className="text-xs font-bold text-slate-900">
-                    {friend.accountName}
-                  </span>
-                  {alreadySeated ? (
-                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                      อยู่ในห้องแล้ว
-                    </span>
-                  ) : (
-                    players.length < 8 && (
-                      <button
-                        type="button"
-                        onClick={() => onInviteFriendToRoom(friend)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-500 hover:bg-rose-600 text-white text-[11px] font-bold rounded-lg cursor-pointer"
-                      >
-                        <span>+ ดึงเข้าห้อง</span>
-                      </button>
-                    )
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      {/* Invite Accepted Friends Strip inside Lobby (Top 5 Recent & Frequent + Modal) */}
+      <CompactLobbyFriendPullBar
+        friends={friends}
+        seatedPlayerIds={players.map((p) => p.id)}
+        maxPlayersReached={players.length >= 8}
+        onPullFriend={onInviteFriendToRoom}
+        onOpenFriendModal={onOpenFriendModal}
+        accent="rose"
+        title={`ดึงเพื่อนที่แอดแล้วเข้าห้องนี้ (${friends.length} คนในรายชื่อเพื่อน)`}
+      />
 
       {/* Insider Game Settings: Word Category, Timer Duration, Optional Custom Word */}
       <div className="p-4 sm:p-5 bg-white border border-rose-200 rounded-3xl space-y-4">

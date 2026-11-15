@@ -70,8 +70,8 @@ service cloud.firestore {
     function isValidRoom(data) {
       return data.roomCode is string &&
              data.roomCode.size() == 4 &&
-             data.roomCode.matches('^[0-9]{4}$') &&
-             data.gameId in ['cheese-thief', 'insider', 'undercover', 'detective-club', 'avalon', 'hues-cues', 'dying-message'] &&
+             data.roomCode.matches('^[0-9A-Z]{4}$') &&
+             data.gameId in ['cheese-thief', 'insider', 'undercover', 'detective-club', 'avalon', 'hues-cues', 'dying-message', 'doraemon'] &&
              data.hostId is string &&
              data.hostId.size() <= 128 &&
              data.status in [
@@ -117,7 +117,10 @@ service cloud.firestore {
                'dm_day_discussion',
                'dm_voting',
                'dm_round_verdict',
-               'dm_game_over'
+               'dm_game_over',
+               'doraemon_setup',
+               'doraemon_playing',
+               'doraemon_game_over'
              ];
     }
 

@@ -48,7 +48,11 @@ export type GamePhase =
   | 'dm_day_discussion'
   | 'dm_voting'
   | 'dm_round_verdict'
-  | 'dm_game_over';
+  | 'dm_game_over'
+  // Doraemon Party Card phases
+  | 'doraemon_setup'
+  | 'doraemon_playing'
+  | 'doraemon_game_over';
 
 export type PlayerRoleCard =
   | 'cheese_thief'
@@ -121,6 +125,22 @@ export interface HuesCuesGuessEntry {
   updatedAt: string;
 }
 
+export interface DoraemonPlayerEntry {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+  avatarEmoji?: string;
+  order: number;
+  cardsDrawnCount?: number;
+}
+
+export interface DoraemonDrawHistoryItem {
+  cardId: string;
+  playerId: string;
+  playerName: string;
+  timestamp: string;
+}
+
 export interface FirestoreRoom {
   id: string;
   roomCode: string;
@@ -132,7 +152,8 @@ export interface FirestoreRoom {
     | 'detective-club'
     | 'avalon'
     | 'hues-cues'
-    | 'dying-message';
+    | 'dying-message'
+    | 'doraemon';
   hostId: string;
   hostName: string;
   status: GamePhase;
@@ -284,6 +305,34 @@ export interface FirestoreRoom {
     | 'in_progress'
     | 'none';
   accusedPlayerId?: string;
+  // Doraemon (King's Cup Thai) Specific Fields
+  doraemonPlayers?: DoraemonPlayerEntry[];
+  doraemonTurnIndex?: number;
+  doraemonCurrentPlayerId?: string;
+  doraemonCurrentPlayerName?: string;
+  doraemonDeck?: string[];
+  doraemonCurrentCardId?: string;
+  doraemonDrawHistory?: DoraemonDrawHistoryItem[];
+  doraemonInitialKingCommand?: string;
+  doraemonPinnedKing?: {
+    playerId: string;
+    playerName: string;
+    command: string;
+    timestamp: string;
+  } | null;
+  doraemonPinnedQueen?: {
+    playerId: string;
+    playerName: string;
+    timestamp: string;
+  } | null;
+  doraemonPinnedJack?: {
+    playerId: string;
+    playerName: string;
+    ruleText?: string;
+    timestamp: string;
+  } | null;
+  doraemonCustomRules?: Record<string, string>;
+  doraemonTotalDrawnCount?: number;
   playerCount?: number;
   maxPlayers?: number;
   createdAt: string;

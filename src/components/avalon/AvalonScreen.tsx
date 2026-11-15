@@ -8,6 +8,7 @@ import {
   listenToRoom,
   listenToRoomPlayers,
   addPracticeTablemate,
+  addFriendToRoomSeat,
   removePlayer,
   leaveOrCloseTableRoom,
   deleteTableRoom,
@@ -15,6 +16,7 @@ import {
   FirestorePlayer,
   PlayerRoleCard,
 } from '../../firebase/tableService';
+import { CompactHubFriendsCard } from '../friends/CompactFriendsSection';
 import {
   updateAvalonLobbySettings,
   setPlayerAvalonRole,
@@ -427,6 +429,19 @@ export const AvalonScreen: React.FC<AvalonScreenProps> = ({
                   </div>
                 </div>
               </motion.div>
+
+              {/* Friends List Card (Top 5 Recent & Frequent + Modal) */}
+              {onOpenFriendModal && (
+                <div className="md:col-span-12">
+                  <CompactHubFriendsCard
+                    friends={friends}
+                    onOpenFriendModal={onOpenFriendModal}
+                    accent="emerald"
+                    addFriendBtnClass="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    friendRowClass="bg-emerald-50/40 border-emerald-200/80"
+                  />
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -455,10 +470,14 @@ export const AvalonScreen: React.FC<AvalonScreenProps> = ({
                   currentRoom={room}
                   players={players}
                   currentUid={currentUserId}
+                  friends={friends}
                   isLoading={isLoading}
                   onUpdateSettings={handleUpdateSettings}
                   onAddBot={handleAddBot}
                   onRemovePlayer={handleRemovePlayer}
+                  onPullFriend={async (friend) => {
+                    await addFriendToRoomSeat(room.id, friend);
+                  }}
                   onStartGame={handleStartGame}
                   onOpenInviteModal={onOpenFriendModal}
                   onPlayFlipSound={playCardFlipSound}

@@ -24,6 +24,7 @@ import {
   DyingMessageEvidenceCategory,
 } from '../../data/dyingMessageCards';
 import { DyingMessageDeckExplorerModal } from './DyingMessageDeckExplorerModal';
+import { CompactLobbyFriendPullBar } from '../friends/CompactFriendsSection';
 
 interface DyingMessageLobbyProps {
   room: FirestoreRoom;
@@ -534,37 +535,16 @@ export const DyingMessageLobby: React.FC<DyingMessageLobbyProps> = ({
             })}
           </div>
 
-          {/* Quick Pull Friends Bar */}
-          {isHost && friends.length > 0 && (
-            <div className="p-3.5 rounded-2xl bg-rose-50/50 border border-rose-200/70 space-y-2">
-              <div className="text-xs font-extrabold text-rose-950">
-                ดึงเพื่อนของคุณเข้ามานั่งในโต๊ะทันที
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {friends.map((friend) => {
-                  const alreadySeated = players.some(
-                    (p) => p.id === friend.uid
-                  );
-                  return (
-                    <button
-                      key={friend.uid}
-                      type="button"
-                      disabled={alreadySeated}
-                      onClick={() => onPullFriendToSeat(friend)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
-                        alreadySeated
-                          ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-default'
-                          : 'bg-white hover:bg-rose-100 border-rose-300 text-rose-900 cursor-pointer'
-                      }`}
-                    >
-                      {alreadySeated
-                        ? `✓ ${friend.accountName} นั่งแล้ว`
-                        : `+ ดึง ${friend.accountName}`}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+          {/* Quick Pull Friends Bar (Top 5 Recent & Frequent + Modal) */}
+          {isHost && (
+            <CompactLobbyFriendPullBar
+              friends={friends}
+              seatedPlayerIds={players.map((p) => p.id)}
+              maxPlayersReached={players.length >= 12}
+              onPullFriend={onPullFriendToSeat}
+              accent="rose"
+              title={`ดึงเพื่อนของคุณเข้ามานั่งในโต๊ะทันที (${friends.length} คน)`}
+            />
           )}
 
           {/* Start Game Action */}

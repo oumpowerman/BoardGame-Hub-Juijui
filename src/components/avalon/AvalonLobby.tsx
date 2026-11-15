@@ -24,15 +24,19 @@ import {
   SameRoomQuickFriendBar,
   SeatQuickAddFriendButton,
 } from '../friends/SameRoomQuickFriendBar';
+import { CompactLobbyFriendPullBar } from '../friends/CompactFriendsSection';
+import { UserProfile } from '../../firebase/userService';
 
 export interface AvalonLobbyProps {
   currentRoom: FirestoreRoom;
   players: FirestorePlayer[];
   currentUid: string;
+  friends?: UserProfile[];
   isLoading: boolean;
   onUpdateSettings: (settings: AvalonSettingsPayload) => Promise<void>;
   onAddBot?: () => Promise<void>;
   onRemovePlayer?: (playerId: string) => Promise<void>;
+  onPullFriend?: (friend: UserProfile) => void;
   onStartGame: () => Promise<void>;
   onOpenInviteModal?: () => void;
   onPlayFlipSound?: () => void;
@@ -42,10 +46,12 @@ export const AvalonLobby: React.FC<AvalonLobbyProps> = ({
   currentRoom,
   players,
   currentUid,
+  friends = [],
   isLoading,
   onUpdateSettings,
   onAddBot,
   onRemovePlayer,
+  onPullFriend,
   onStartGame,
   onOpenInviteModal,
   onPlayFlipSound,
@@ -531,11 +537,24 @@ export const AvalonLobby: React.FC<AvalonLobbyProps> = ({
         </AnimatePresence>
       </div>
 
+      {/* Invite Friends Strip (Top 5 Recent & Frequent + Modal) */}
+      {onPullFriend && (
+        <CompactLobbyFriendPullBar
+          friends={friends}
+          seatedPlayerIds={players.map((p) => p.id)}
+          maxPlayersReached={players.length >= 10}
+          onPullFriend={onPullFriend}
+          onOpenFriendModal={onOpenInviteModal}
+          accent="emerald"
+          title={`ดึงเพื่อนที่แอดแล้วเข้าห้องนี้ (${friends.length} คน)`}
+        />
+      )}
+
       {/* Same-Room 1-Click Add Friends Strip */}
       <SameRoomQuickFriendBar
         players={players}
         currentUid={currentUid}
-        friends={[]}
+        friends={friends}
       />
 
       {/* 4. Seated Players Grid & Bot Controls */}

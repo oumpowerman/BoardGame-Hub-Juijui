@@ -160,6 +160,65 @@ class TableAudioSynthesizer {
       osc.stop(ctx.currentTime + 0.06);
     } catch {}
   }
+
+  // Play suspenseful rising heartbeat/drum pulse when drawing a card into the spotlight
+  playSuspensePulse() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const beats = [0, 140, 380, 520];
+    beats.forEach((delay, idx) => {
+      setTimeout(() => {
+        try {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          const freq = idx % 2 === 0 ? 95 : 135;
+          osc.frequency.setValueAtTime(freq, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(48, ctx.currentTime + 0.14);
+          gain.gain.setValueAtTime(0.24, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.14);
+        } catch {}
+      }, delay);
+    });
+  }
+
+  // Play magical card reveal fanfare (sparkling arpeggio)
+  playCardRevealFanfare(isRoyal: boolean = false) {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const notes = isRoyal
+      ? [523.25, 659.25, 783.99, 1046.5, 1318.51] // C5 E5 G5 C6 E6
+      : [440, 554.37, 659.25, 880]; // A4 C#5 E5 A5
+    notes.forEach((freq, idx) => {
+      setTimeout(() => {
+        try {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = isRoyal ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime);
+          gain.gain.setValueAtTime(0.16, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.55);
+        } catch {}
+      }, idx * 70);
+    });
+  }
+
+  // Trigger silent haptic vibration on mobile devices (e.g. secret wake call)
+  vibrate(pattern: number | number[] = [120, 80, 120]) {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate(pattern);
+      } catch {}
+    }
+  }
 }
 
 export const tableAudio = new TableAudioSynthesizer();

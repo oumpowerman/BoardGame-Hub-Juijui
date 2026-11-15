@@ -13,6 +13,7 @@ import { FirestoreRoom, GamePhase } from '../../firebase/tableService';
 import { UserProfile } from '../../firebase/userService';
 import { TransitionGameVariant } from '../transitions/GameSceneTransition';
 import { getActiveRoomSession } from '../../utils/activeRoomPersistence';
+import { CompactHubFriendsCard } from '../friends/CompactFriendsSection';
 
 export interface GameHubScreenProps {
   variant: TransitionGameVariant;
@@ -201,6 +202,26 @@ const HUB_THEMES: Record<
     enterTableBtn: 'bg-sky-100 hover:bg-sky-200 text-sky-950 font-bold',
     friendRow: 'bg-sky-50/40 border-sky-200/70',
     addFriendBtn: 'bg-rose-500 hover:bg-rose-600 text-white font-bold',
+  },
+  doraemon: {
+    heroCard:
+      'bg-gradient-to-br from-amber-50 via-[#FFFDF7] to-rose-50 border-amber-300/90',
+    heroIconBg: 'bg-amber-500 text-white shadow-2xs',
+    badge: 'bg-amber-100/90 text-amber-950 border-amber-300/80',
+    primaryBtn: 'bg-amber-500 hover:bg-amber-600 text-white shadow-2xs',
+    dividerLine: 'bg-amber-200/70',
+    inputBorder: 'border-amber-300/90',
+    inputIcon: 'text-amber-600',
+    joinBtn: 'bg-amber-500 hover:bg-amber-600 text-white',
+    tableCardBorder: 'border-amber-200/80',
+    tableHeaderBorder: 'border-amber-100',
+    emptyBox: 'bg-amber-50/40 border-amber-200',
+    divideLine: 'divide-amber-100/80',
+    rowHover: 'hover:bg-amber-50/50',
+    roomCodeBadge: 'bg-amber-500 text-white font-black',
+    enterTableBtn: 'bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold',
+    friendRow: 'bg-amber-50/40 border-amber-200/70',
+    addFriendBtn: 'bg-amber-500 hover:bg-amber-600 text-white font-bold',
   },
 };
 
@@ -491,59 +512,13 @@ export const GameHubScreen: React.FC<GameHubScreenProps> = ({
         )}
       </div>
 
-      {/* 3. Friends List Card */}
-      <div className="bg-white border border-rose-100 rounded-3xl p-5 sm:p-6 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
-            <Users className="w-4 h-4 text-rose-500" />
-            <span>รายชื่อเพื่อนของคุณ ({friends.length})</span>
-          </span>
-          <button
-            type="button"
-            onClick={onOpenFriendModal}
-            className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 hover:text-rose-800 cursor-pointer"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>+ เพิ่มเพื่อน</span>
-          </button>
-        </div>
-
-        {friends.length === 0 ? (
-          <div className="p-4 bg-rose-50/40 border border-dashed border-rose-200 rounded-2xl text-center space-y-2">
-            <p className="text-xs text-slate-600">
-              แอดเพื่อนด้วยชื่อ Account หรือรหัสเพื่อนเพื่อดึงมานั่งโต๊ะเดียวกันได้ทันที
-            </p>
-            <button
-              type="button"
-              onClick={onOpenFriendModal}
-              className={`px-3.5 py-2 ${theme.addFriendBtn} text-xs font-bold rounded-xl cursor-pointer`}
-            >
-              ค้นหาและแอดเพื่อนด้วยชื่อ / UID
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {friends.map((friend) => (
-              <div
-                key={friend.uid}
-                className={`p-2.5 ${theme.friendRow} border rounded-xl flex items-center justify-between gap-2`}
-              >
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-slate-900 truncate">
-                    {friend.accountName}
-                  </div>
-                  <div className="text-[10px] font-mono text-slate-500">
-                    #{friend.friendCode}
-                  </div>
-                </div>
-                <span className="text-[10px] font-semibold text-emerald-700">
-                  พร้อมชวนเข้าโต๊ะ
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* 3. Friends List Card (Top 5 Recent & Frequent + Modal) */}
+      <CompactHubFriendsCard
+        friends={friends}
+        onOpenFriendModal={onOpenFriendModal}
+        addFriendBtnClass={theme.addFriendBtn}
+        friendRowClass={theme.friendRow}
+      />
     </motion.div>
   );
 };

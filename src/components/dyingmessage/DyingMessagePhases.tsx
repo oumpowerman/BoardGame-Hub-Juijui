@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Eye,
   EyeOff,
@@ -21,6 +21,7 @@ import {
   getDyingMessageCardById,
 } from '../../data/dyingMessageCards';
 import { DyingMessageMinimalPhonePad } from './DyingMessageMinimalPhonePad';
+import { tableAudio } from '../../utils/tableAudio';
 
 interface DyingMessagePhasesProps {
   room: FirestoreRoom;
@@ -85,6 +86,27 @@ export const DyingMessagePhases: React.FC<DyingMessagePhasesProps> = ({
       return [...prev, cardId];
     });
   };
+
+  // Secret tactile vibration prompt on phone when it's your turn to act during the night
+  useEffect(() => {
+    const isMySecretTurn =
+      (room.status === 'dm_night_kill' && isKiller) ||
+      (room.status === 'dm_victim_clue' && (isCurrentVictim || isKiller)) ||
+      (room.status === 'dm_special_roles' &&
+        isDetective &&
+        myPlayer?.dmIsAlive !== false);
+
+    if (isMySecretTurn) {
+      tableAudio.vibrate([160, 90, 160]);
+    }
+  }, [
+    room.status,
+    room.dmRoundNumber,
+    isKiller,
+    isCurrentVictim,
+    isDetective,
+    myPlayer?.dmIsAlive,
+  ]);
 
   // =========================================================================
   // PHASE 1: ROLE DEAL (แอบดูบทบาทลับส่วนตัว)
@@ -593,6 +615,73 @@ export const DyingMessagePhases: React.FC<DyingMessagePhasesProps> = ({
           )}
         </div>
       </div>
+
+      {/* Hold-to-Peek Own Role / Accomplice Info / Detective Inspection Result on Phone */}
+      {(isDayDiscussion || isVoting || isRoundVerdict) && (
+        <div className="rounded-3xl bg-white border border-amber-200 p-3.5 space-y-2.5 shadow-2xs">
+          <button
+            type="button"
+            onMouseDown={() => setIsPeekingRole(true)}
+            onMouseUp={() => setIsPeekingRole(false)}
+            onMouseLeave={() => setIsPeekingRole(false)}
+            onTouchStart={() => setIsPeekingRole(true)}
+            onTouchEnd={() => setIsPeekingRole(false)}
+            className="w-full py-2.5 px-4 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-950 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 select-none cursor-pointer"
+          >
+            {isPeekingRole ? (
+              <>
+                <EyeOff className="w-4 h-4 text-amber-700" />
+                <span>ปล่อยนิ้วเพื่อซ่อนความลับ</span>
+              </>
+            ) : (
+              <>
+                <Eye className="w-4 h-4 text-amber-700" />
+                <span>กดค้างเพื่อแอบดูบทบาท / ผลส่องส่วนตัว</span>
+                {myPlayer?.role === 'dm_detective' &&
+                  myPlayer.dmInspectedTargetName && (
+                    <span className="px-2 py-0.5 rounded-full bg-sky-600 text-white text-[10px] font-black animate-pulse">
+                      🕵️ ดูผลส่อง!
+                    </span>
+                  )}
+              </>
+            )}
+          </button>
+
+          {isPeekingRole && (
+            <div
+              className={`p-3.5 rounded-2xl border ${myRoleInfo.badgeBg} ${myRoleInfo.badgeBorder} space-y-2 text-center`}
+            >
+              <div className="text-xl">{myRoleInfo.emoji}</div>
+              <div className={`text-xs sm:text-sm font-black ${myRoleInfo.badgeText}`}>
+                บทบาทของคุณ: {myRoleInfo.nameTh}
+              </div>
+              <p className="text-xs text-slate-700">{myRoleInfo.shortAbility}</p>
+
+              {myPlayer?.role === 'dm_accomplice' && room.dmKillerName && (
+                <div className="p-2 rounded-xl bg-rose-100 border border-rose-300 text-rose-950 text-xs font-extrabold">
+                  🗡️ ฆาตกรตัวจริงที่คุณต้องช่วยปั่นโหวตคือ: {room.dmKillerName}
+                </div>
+              )}
+
+              {myPlayer?.role === 'dm_detective' &&
+                myPlayer.dmInspectedTargetName && (
+                  <div
+                    className={`p-2 rounded-xl border text-xs font-extrabold ${
+                      myPlayer.dmInspectedIsKiller
+                        ? 'bg-rose-100 border-rose-300 text-rose-950'
+                        : 'bg-emerald-100 border-emerald-300 text-emerald-950'
+                    }`}
+                  >
+                    🕵️ ผลส่อง {myPlayer.dmInspectedTargetName}:{' '}
+                    {myPlayer.dmInspectedIsKiller
+                      ? 'ใช่ฆาตกรตัวจริง!'
+                      : 'ไม่ใช่ฆาตกรลงมือ'}
+                  </div>
+                )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Evidence Cards */}
       {evidenceRounds.map((evRound) => (

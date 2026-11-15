@@ -152,6 +152,12 @@ export const DyingMessageMinimalPhonePad: React.FC<
             <>
               <Eye className="w-4 h-4 text-amber-700" />
               <span>กดค้างเพื่อแอบดูบทบาท / ผลส่องส่วนตัว</span>
+              {myPlayer?.role === 'dm_detective' &&
+                myPlayer.dmInspectedTargetName && (
+                  <span className="px-2 py-0.5 rounded-full bg-sky-600 text-white text-[10px] font-black animate-pulse">
+                    🕵️ ดูผลส่อง!
+                  </span>
+                )}
             </>
           )}
         </button>

@@ -34,6 +34,7 @@ interface GameCatalogGridProps {
   onEnterAvalonScreen?: () => void;
   onEnterHuesCuesScreen?: () => void;
   onEnterDyingMessageScreen?: () => void;
+  onEnterDoraemonScreen?: () => void;
   onOpenGameSubForum: (gameSlug: BoardGame['slug']) => void;
   onResetFilter: () => void;
 }
@@ -54,6 +55,7 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
   onEnterAvalonScreen,
   onEnterHuesCuesScreen,
   onEnterDyingMessageScreen,
+  onEnterDoraemonScreen,
   onOpenGameSubForum,
   onResetFilter,
 }) => {
@@ -173,6 +175,7 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
           const isAvalon = game.slug === 'avalon';
           const isHuesCues = game.slug === 'hues-cues';
           const isDyingMessage = game.slug === 'dying-message';
+          const isDoraemon = game.slug === 'doraemon';
 
           // Resolve cover image or Google Drive link
           const activeCoverSource = customCovers[game.slug] || game.coverImage;
@@ -201,6 +204,8 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
                   ? 'border-2 border-pink-500 shadow-md ring-2 ring-pink-200/60'
                   : isDyingMessage
                   ? 'border-2 border-sky-500 shadow-md ring-2 ring-sky-200/60'
+                  : isDoraemon
+                  ? 'border-2 border-amber-500 shadow-md ring-2 ring-amber-300/70'
                   : 'border border-rose-100/90 shadow-xs hover:shadow-md'
               }`}
             >
@@ -588,6 +593,16 @@ export const GameCatalogGrid: React.FC<GameCatalogGridProps> = ({
                   >
                     <Play className="w-4 h-4 fill-current" />
                     <span>เข้าสู่โต๊ะเล่นเบาะแสมรณะ</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                ) : isDoraemon && onEnterDoraemonScreen ? (
+                  <button
+                    type="button"
+                    onClick={onEnterDoraemonScreen}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-extrabold text-white bg-amber-500 hover:bg-amber-600 border border-amber-500 rounded-xl shadow-xs hover:scale-[1.01] active:scale-[0.98] transition-all whitespace-nowrap shrink-0 cursor-pointer min-h-[42px]"
+                  >
+                    <Play className="w-4 h-4 fill-current" />
+                    <span>เข้าสู่วงไพ่โดเรม่อน (King&apos;s Cup)</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (

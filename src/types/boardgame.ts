@@ -17,6 +17,7 @@ export interface BoardGame {
     | 'avalon'
     | 'hues-cues'
     | 'dying-message'
+    | 'doraemon'
     | 'werewolf-night'
     | 'catan-frontier';
   titleTh: string;

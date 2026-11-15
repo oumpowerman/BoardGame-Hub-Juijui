@@ -22,6 +22,7 @@ export type ActiveSection =
   | 'avalon-screen'
   | 'hues-cues-screen'
   | 'dying-message-screen'
+  | 'doraemon-screen'
   | 'sub-forums'
   | 'leaderboard'
   | 'architecture';
@@ -36,6 +37,7 @@ interface NavbarProps {
   onEnterAvalonScreen?: () => void;
   onEnterHuesCuesScreen?: () => void;
   onEnterDyingMessageScreen?: () => void;
+  onEnterDoraemonScreen?: () => void;
   onOpenFriendModal: () => void;
   onSignOut: () => void;
   currentUser: UserProfile;
@@ -60,6 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onEnterAvalonScreen,
   onEnterHuesCuesScreen,
   onEnterDyingMessageScreen,
+  onEnterDoraemonScreen,
   onOpenFriendModal,
   onSignOut,
   currentUser,
@@ -92,7 +95,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     activeSection === 'detective-club-screen' ||
     activeSection === 'avalon-screen' ||
     activeSection === 'hues-cues-screen' ||
-    activeSection === 'dying-message-screen';
+    activeSection === 'dying-message-screen' ||
+    activeSection === 'doraemon-screen';
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -124,6 +128,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       | 'avalon'
       | 'hues-cues'
       | 'dying-message'
+      | 'doraemon'
   ) => {
     setIsDropdownOpen(false);
     if (type === 'cheese-thief') {
@@ -140,6 +145,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       onEnterHuesCuesScreen();
     } else if (type === 'dying-message' && onEnterDyingMessageScreen) {
       onEnterDyingMessageScreen();
+    } else if (type === 'doraemon' && onEnterDoraemonScreen) {
+      onEnterDoraemonScreen();
     }
   };
 
@@ -427,6 +434,33 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                     <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-sky-100 text-sky-900 border border-sky-200 shrink-0">
                       {liveDyingMessageRoomsCount || 0} ห้อง
+                    </span>
+                  </button>
+
+                  {/* Game 8: Doraemon Party Card */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectGame('doraemon')}
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-amber-50/80 transition-colors flex items-center justify-between gap-3 group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-base shadow-2xs shrink-0 group-hover:scale-105 transition-transform">
+                        👑
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-xs font-extrabold text-slate-900 truncate flex items-center gap-1.5">
+                          <span>ไพ่โดเรม่อน (King&apos;s Cup)</span>
+                          <span className="text-[10px] text-amber-800 font-mono font-bold">
+                            (2–20 คน)
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate">
+                          เครื่องเดียวเวียนรอบวง · คำสั่ง King & ปักหมุด JQK
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
+                      Party
                     </span>
                   </button>
                 </motion.div>

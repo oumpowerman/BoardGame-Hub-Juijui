@@ -30,6 +30,7 @@ import { DetectiveClubScreen } from './components/detectiveclub/DetectiveClubScr
 import { AvalonScreen } from './components/avalon/AvalonScreen';
 import { HuesCuesScreen } from './components/huescues/HuesCuesScreen';
 import { DyingMessageScreen } from './components/dyingmessage/DyingMessageScreen';
+import { DoraemonScreen } from './components/doraemon/DoraemonScreen';
 import {
   GameSceneTransition,
   TransitionGameVariant,
@@ -315,6 +316,12 @@ export default function App() {
             wins: entry.wins,
             winRate: entry.winRate,
           },
+          doraemon: {
+            elo: entry.overallElo,
+            matches: 0,
+            wins: 0,
+            winRate: 0,
+          },
         },
       }));
       setLeaderboard(mapped);
@@ -579,6 +586,29 @@ export default function App() {
     }, 620);
   };
 
+  // Enter Doraemon Party Card Screen with Golden King's Cup Transition
+  const handleEnterDoraemonScreen = (roomCode?: string) => {
+    if (transitionTimerRef.current) {
+      window.clearTimeout(transitionTimerRef.current);
+    }
+    setInitialRoomCode(roomCode || '');
+    setSceneTransition({
+      isVisible: true,
+      direction: 'enter',
+      gameVariant: 'doraemon',
+      roomCode,
+    });
+
+    window.setTimeout(() => {
+      setActiveSection('doraemon-screen');
+      window.scrollTo(0, 0);
+    }, 260);
+
+    transitionTimerRef.current = window.setTimeout(() => {
+      setSceneTransition((prev) => ({ ...prev, isVisible: false }));
+    }, 620);
+  };
+
   // Check URL query parameters (?room=... or ?code=...) to auto-join friends
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -602,6 +632,8 @@ export default function App() {
           handleEnterHuesCuesScreen(targetRoom);
         } else if (gameParam === 'dying-message') {
           handleEnterDyingMessageScreen(targetRoom);
+        } else if (gameParam === 'doraemon') {
+          handleEnterDoraemonScreen(targetRoom);
         } else {
           handleEnterCheeseThiefScreen(targetRoom);
         }
@@ -653,6 +685,8 @@ export default function App() {
       handleEnterHuesCuesScreen(matchedRoom.id);
     } else if (matchedRoom.gameId === 'dying-message') {
       handleEnterDyingMessageScreen(targetCode);
+    } else if (matchedRoom.gameId === 'doraemon') {
+      handleEnterDoraemonScreen(targetCode);
     } else {
       handleEnterCheeseThiefScreen(targetCode);
     }
@@ -762,6 +796,7 @@ export default function App() {
         'catan-frontier': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         'hues-cues': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
         'dying-message': { elo: 1500, matches: 0, wins: 0, winRate: 0 },
+        doraemon: { elo: 1500, matches: 0, wins: 0, winRate: 0 },
       },
     };
 
@@ -947,6 +982,13 @@ export default function App() {
           onOpenFriendModal={() => setIsFriendModalOpen(true)}
           onActiveRoomChange={setActiveCheeseRoom}
         />
+      ) : activeSection === 'doraemon-screen' ? (
+        <DoraemonScreen
+          currentUser={currentUser}
+          initialRoomCode={initialRoomCode}
+          onBackToCatalog={() => handleExitGameToSection('catalog', 'doraemon')}
+          onActiveRoomChange={setActiveCheeseRoom}
+        />
       ) : (
         <>
           {/* Top Bar */}
@@ -967,6 +1009,8 @@ export default function App() {
             handleEnterHuesCuesScreen();
           } else if (sec === 'dying-message-screen') {
             handleEnterDyingMessageScreen();
+          } else if (sec === 'doraemon-screen') {
+            handleEnterDoraemonScreen();
           } else {
             setActiveSection(sec);
           }
@@ -978,6 +1022,7 @@ export default function App() {
         onEnterAvalonScreen={() => handleEnterAvalonScreen()}
         onEnterHuesCuesScreen={() => handleEnterHuesCuesScreen()}
         onEnterDyingMessageScreen={() => handleEnterDyingMessageScreen()}
+        onEnterDoraemonScreen={() => handleEnterDoraemonScreen()}
         onOpenFriendModal={() => setIsFriendModalOpen(true)}
         onSignOut={handleSignOut}
         currentUser={currentUser}
@@ -1046,6 +1091,7 @@ export default function App() {
                   onEnterAvalonScreen={() => handleEnterAvalonScreen()}
                   onEnterHuesCuesScreen={() => handleEnterHuesCuesScreen()}
                   onEnterDyingMessageScreen={() => handleEnterDyingMessageScreen()}
+                  onEnterDoraemonScreen={() => handleEnterDoraemonScreen()}
                   onOpenGameSubForum={handleOpenGameSubForum}
                   onResetFilter={() => {
                     setSelectedCategory('all');
